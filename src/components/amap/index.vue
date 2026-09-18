@@ -199,7 +199,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   position: relative;
-  background: #091a3d; // 纯色深蓝背景
+  background: transparent; // 纯色深蓝背景
 
   .map-view {
     width: 100%;
