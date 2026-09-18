@@ -1,0 +1,47 @@
+---
+description: Vue/SCSS 样式必须用父子嵌套书写
+globs: "**/*.{vue,scss}"
+alwaysApply: false
+---
+
+# 样式用父子嵌套书写
+
+在 `<style lang="scss">` 和 `.scss` 中，按 DOM 结构用 SCSS 嵌套写样式，不要把子选择器平铺成一长串独立类。
+
+- 一个组件一个根类，子元素、伪类、修饰态都写在根类里面
+- 嵌套一般不超过 3 层
+- `&` 只用于 `&:hover`、`&-item`、`&.is-active` 这类状态/BEM 修饰
+- 不要用 `&` 拼出和 DOM 无关的深层选择器
+
+```scss
+/* ❌ BAD：平铺，看不出结构 */
+.production {}
+.top {}
+.farm-ring {}
+.ring-text strong {}
+.bar-item:hover {}
+
+/* ✅ GOOD：按父子结构嵌套 */
+.production {
+  height: 100%;
+
+  .top {
+    display: flex;
+    align-items: center;
+  }
+
+  .ring-text {
+    color: #fff;
+
+    strong {
+      font-size: 38px;
+    }
+  }
+
+  .bar-item {
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+}
+```

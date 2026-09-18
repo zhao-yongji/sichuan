@@ -1,0 +1,35 @@
+---
+description: 背景图写在 class 中，禁止内联 style
+globs: "**/*.{vue,scss}"
+alwaysApply: false
+---
+
+# 背景放在 class 中
+
+`background`、`background-image` 以及背景相关 CSS 变量，必须写在 class 里，不要写在模板的 `:style` / `style` 内联样式中。
+
+- 静态资源用 `url('@/assets/...')` 写在 SCSS 类里
+- 需要切换背景时用不同 class，不要用内联切换 `backgroundImage`
+- 图标、装饰图同样用 class 的 `background`，不要用内联 `--xxx` 传图
+
+```vue
+<!-- ❌ BAD -->
+<section :style="{ backgroundImage: `url(${panelBg})` }">
+  <span :style="{ '--more-icon': `url(${moreIcon})` }"></span>
+</section>
+
+<!-- ✅ GOOD -->
+<section class="block-panel">
+  <span class="icon"></span>
+</section>
+```
+
+```scss
+.block-panel {
+  background: url('@/assets/image/小背景.png') no-repeat center / 100% 100%;
+
+  .icon {
+    background: url('@/assets/image/查看更多.png') no-repeat center / contain;
+  }
+}
+```
