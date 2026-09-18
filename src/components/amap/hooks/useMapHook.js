@@ -46,13 +46,13 @@ const cityData = {
 
 const getColorByAdcode = (adcode) => {
   const data = cityData[adcode];
-  if (!data) return "#062253"; // 默认深蓝色
+  if (!data) return "#C1DEF7";
 
   const count = data.count;
-  if (count >= 300000) return "#d32029"; // 红色
-  if (count >= 30000) return "#f37826"; // 橙色
-  if (count > 0) return "#ffc424"; // 黄色
-  return "#062253"; // 无数据时的深蓝色
+  if (count >= 300000) return "#4B93E9"; // 高 (深蓝)
+  if (count >= 30000) return "#78ADE8"; // 中 (中蓝)
+  if (count > 0) return "#99C4EC"; // 低 (浅蓝)
+  return "#C1DEF7"; // 无数据 (最浅蓝)
 };
 
 /**
@@ -130,32 +130,33 @@ export const useMap = (containerRef) => {
               fill: (properties) => {
                 return getColorByAdcode(properties.adcode);
               },
-              "province-stroke": "#00e5ff",
-              "city-stroke": "rgba(0, 229, 255, 0.6)",
+              "province-stroke": "#ffffff",
+              "city-stroke": "rgba(255, 255, 255, 0.6)",
               "county-stroke": "transparent",
             },
           });
           map.add(disProvince);
 
-          // 2. 绘制外边界的高亮线和发光线
+          // 2. 绘制阴影和外边界
           boundaries.forEach((bounds) => {
-            // 主描边
-            new AMap.Polyline({
-              path: bounds,
-              strokeColor: "#59f3ff",
-              strokeWeight: 2,
-              strokeOpacity: 1,
-              zIndex: 130,
+            // 阴影 Polygon (向右下偏移产生立体感)
+            const shadowPath = bounds.map((p) => [p.lng + 0.05, p.lat - 0.05]);
+            new AMap.Polygon({
+              path: shadowPath,
+              fillColor: "#2a5482",
+              fillOpacity: 1,
+              strokeWeight: 0,
+              zIndex: 110,
               map: map,
             });
 
-            // 外层发光
+            // 主描边
             new AMap.Polyline({
               path: bounds,
-              strokeColor: "rgba(0, 229, 255, 0.4)",
-              strokeWeight: 8,
+              strokeColor: "#ffffff",
+              strokeWeight: 2,
               strokeOpacity: 1,
-              zIndex: 120,
+              zIndex: 130,
               map: map,
             });
           });
