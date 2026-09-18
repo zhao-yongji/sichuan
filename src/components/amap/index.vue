@@ -10,6 +10,56 @@ import AMapLoader from "@amap/amap-jsapi-loader";
 
 const mapRef = ref(null);
 const mapInstance = shallowRef(null);
+let heatmapInstance = null; // 热力图实例（非响应式，避免深层代理）
+
+/**
+ * 生成热力图假数据（四川省主要城市中心 + 周边随机散点）
+ * 数据格式与参考项目一致：{ lng, lat, count }
+ */
+const generateHeatmapData = () => {
+  // 21 个市州中心坐标及基础热度
+  const cityCenters = [
+    { lng: 104.065735, lat: 30.659462, count: 100 }, // 成都
+    { lng: 104.679642, lat: 31.467975, count: 75 }, // 绵阳
+    { lng: 104.398127, lat: 31.127901, count: 60 }, // 德阳
+    { lng: 105.443432, lat: 28.871806, count: 55 }, // 泸州
+    { lng: 104.641715, lat: 28.751312, count: 65 }, // 宜宾
+    { lng: 103.767263, lat: 29.552563, count: 50 }, // 乐山
+    { lng: 106.087005, lat: 30.793128, count: 58 }, // 南充
+    { lng: 107.468363, lat: 31.209494, count: 52 }, // 达州
+    { lng: 103.045798, lat: 29.986323, count: 40 }, // 雅安
+    { lng: 105.843432, lat: 32.435372, count: 38 }, // 广元
+    { lng: 105.573514, lat: 30.515384, count: 42 }, // 遂宁
+    { lng: 105.058588, lat: 29.580228, count: 45 }, // 内江
+    { lng: 106.633343, lat: 30.456476, count: 44 }, // 广安
+    { lng: 106.747614, lat: 31.869098, count: 36 }, // 巴中
+    { lng: 103.832645, lat: 30.04834, count: 43 }, // 眉山
+    { lng: 104.627936, lat: 30.128194, count: 46 }, // 资阳
+    { lng: 104.776116, lat: 29.339243, count: 48 }, // 自贡
+    { lng: 101.718637, lat: 26.582347, count: 35 }, // 攀枝花
+    { lng: 102.221374, lat: 31.899792, count: 30 }, // 阿坝
+    { lng: 101.963811, lat: 30.049522, count: 28 }, // 甘孜
+    { lng: 102.267306, lat: 27.88174, count: 32 }, // 凉山
+  ];
+
+  const data = [];
+  cityCenters.forEach((city) => {
+    // 城市中心主热力点
+    data.push({ lng: city.lng, lat: city.lat, count: city.count });
+
+    // 周边随机散点，模拟真实数据分布
+    const scatterCount = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < scatterCount; i += 1) {
+      data.push({
+        lng: city.lng + (Math.random() - 0.5) * 0.7,
+        lat: city.lat + (Math.random() - 0.5) * 0.5,
+        count: Math.floor(Math.random() * 50) + 10,
+      });
+    }
+  });
+
+  return data;
+};
 
 const initMap = async () => {
   window._AMapSecurityConfig = {
@@ -20,7 +70,7 @@ const initMap = async () => {
     const AMap = await AMapLoader.load({
       key: "496fae1930a5be230b42266fc3524b1d", // 复用参考项目的 Key
       version: "2.0",
-      plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer"],
+      plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer", "AMap.HeatMap"],
     });
 
     // 获取四川省边界数据
@@ -99,18 +149,24 @@ const initMap = async () => {
           });
         });
 
-        // 4. 添加 3D 墙体效果 (类似参考项目里的光墙)
-        const object3Dlayer = new AMap.Object3DLayer({ zIndex: 110 });
-        map.add(object3Dlayer);
+        // 5. 添加热力图（参考 sldz_jczl_web 大屏 useMapHook 的实现，假数据）
+        const heatmapData = generateHeatmapData();
+        // 热力渐变最大值取数据中的最大 count，防止颜色渐变漂移
+        const heatmapMax = Math.max(...heatmapData.map((d) => d.count));
 
-        boundaries.forEach((bounds) => {
-          const wall = new AMap.Object3D.Wall({
-            path: bounds,
-            height: -100000, // 墙体向下延伸
-            color: "rgba(0, 229, 255, 0.2)",
-          });
-          wall.transparent = true;
-          object3Dlayer.add(wall);
+        heatmapInstance = new AMap.HeatMap(map, {
+          radius: 30, // 省级视野（zoom 6.5）下适当增大半径
+          opacity: [0, 0.8],
+          gradient: {
+            0.4: "#55ce64", // 低 (绿色)
+            0.7: "#e19a53", // 中 (橙色)
+            1.0: "#e03d52", // 高 (红色)
+          },
+        });
+
+        heatmapInstance.setDataSet({
+          data: heatmapData,
+          max: heatmapMax,
         });
 
         // 调整视野
@@ -127,6 +183,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  // 先销毁热力图，释放 Canvas 资源
+  if (heatmapInstance) {
+    heatmapInstance.setMap(null);
+    heatmapInstance = null;
+  }
   if (mapInstance.value) {
     mapInstance.value.destroy();
     mapInstance.value = null;
