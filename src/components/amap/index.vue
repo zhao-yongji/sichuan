@@ -94,7 +94,7 @@ const initMap = async () => {
         const map = new AMap.Map(mapRef.value, {
           center: [104.065735, 30.659462], // 成都
           zoom: 6.5,
-          viewMode: "3D",
+          viewMode: "2D",
           pitch: 35,
           rotation: 0,
           mask: mask, // 掩膜，只显示四川省内
