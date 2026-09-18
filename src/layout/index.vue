@@ -59,6 +59,11 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
+.screen-body {
+  flex: 1;
+  min-height: 0;
+}
+
 .screen-header {
   position: relative;
   height: 86px;

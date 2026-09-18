@@ -26,7 +26,7 @@ import ScreenPanel from '@/components/ScreenPanel.vue'
 
 <style scoped lang="scss">
 .home {
-  height: 994px;
+  height: 100%;
   display: grid;
   grid-template-columns: 460px 1fr 460px;
   gap: 16px;
