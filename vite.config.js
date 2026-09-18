@@ -12,9 +12,16 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
     },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler'
+        }
+      }
+    },
     server: {
       host: '0.0.0.0',
-      port: 5173,
+      port: 5180,
       open: true,
       proxy: {
         [env.VITE_APP_BASE_API]: {

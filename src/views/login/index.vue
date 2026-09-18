@@ -1,8 +1,8 @@
 <template>
   <div class="login-page">
     <form class="login-card" @submit.prevent="handleLogin">
-      <h1>天府畜牧</h1>
-      <p class="sub">Vue3 项目模板</p>
+      <p class="eyebrow">DATA SCREEN</p>
+      <h1>天府畜牧可视化大屏</h1>
       <label>
         用户名
         <input v-model.trim="form.username" type="text" placeholder="请输入用户名" />
@@ -13,7 +13,7 @@
       </label>
       <p v-if="error" class="error">{{ error }}</p>
       <button type="submit" :disabled="loading">
-        {{ loading ? '登录中...' : '登录' }}
+        {{ loading ? '进入中...' : '进入大屏' }}
       </button>
       <p class="hint">开发环境已开启 mock，任意账号密码即可进入</p>
     </form>
@@ -58,69 +58,69 @@ async function handleLogin() {
 
 <style scoped lang="scss">
 .login-page {
-  min-height: 100vh;
+  width: 1920px;
+  height: 1080px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(31, 138, 76, 0.2), transparent 30%),
-    linear-gradient(135deg, #0f2a1f, #16382a);
 }
 
 .login-card {
-  width: 420px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px 36px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  width: 480px;
+  padding: 48px 42px;
+  background: rgba(8, 28, 22, 0.82);
+  border: 1px solid rgba(62, 224, 143, 0.28);
+  box-shadow: 0 0 40px rgba(62, 224, 143, 0.12);
 
   h1 {
-    margin: 0;
-    font-size: 28px;
-    color: #16382a;
+    margin: 0 0 32px;
+    font-size: 32px;
+    letter-spacing: 4px;
+    color: #f3fff8;
     text-align: center;
   }
 }
 
-.sub {
+.eyebrow {
+  margin: 0 0 8px;
   text-align: center;
-  color: #7a8b82;
-  margin: 8px 0 28px;
+  color: #3ee08f;
+  letter-spacing: 6px;
+  font-size: 12px;
 }
 
 label {
   display: block;
-  margin-bottom: 16px;
-  color: #44554c;
-  font-size: 14px;
+  margin-bottom: 18px;
+  color: #9fdcbf;
 }
 
 input {
   display: block;
   width: 100%;
   margin-top: 8px;
-  height: 42px;
+  height: 46px;
   padding: 0 12px;
-  border: 1px solid #d7e3dc;
-  border-radius: 8px;
+  border: 1px solid rgba(62, 224, 143, 0.28);
+  background: rgba(2, 10, 8, 0.7);
+  color: #e8fff3;
   outline: none;
-  box-sizing: border-box;
 
   &:focus {
-    border-color: #1f8a4c;
+    border-color: #3ee08f;
   }
 }
 
 button {
   width: 100%;
-  height: 44px;
+  height: 48px;
   border: 0;
-  border-radius: 8px;
-  background: #1f8a4c;
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
   margin-top: 8px;
+  background: linear-gradient(90deg, #1f8a4c, #3ee08f);
+  color: #04110c;
+  font-size: 18px;
+  letter-spacing: 4px;
+  cursor: pointer;
 
   &:disabled {
     opacity: 0.7;
@@ -129,13 +129,13 @@ button {
 }
 
 .error {
-  color: #d4380d;
+  color: #ff6b6b;
   margin: 0 0 8px;
 }
 
 .hint {
   margin: 16px 0 0;
-  color: #8a9a92;
+  color: #6f9484;
   font-size: 12px;
   text-align: center;
 }

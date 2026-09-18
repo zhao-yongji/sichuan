@@ -1,67 +1,56 @@
 <template>
-  <section class="page">
-    <h2>首页</h2>
-    <p>当前用户：{{ userName }}</p>
-    <div class="cards">
-      <article class="card">
-        <h3>路由</h3>
-        <p>已配置登录页、布局页、首页、关于页和 404。</p>
-      </article>
-      <article class="card">
-        <h3>接口封装</h3>
-        <p>Axios 拦截器已接入 Token，可在 <code>src/api</code> 继续按模块拆分。</p>
-      </article>
-      <article class="card">
-        <h3>Vuex</h3>
-        <p>user / app 模块已就绪，侧栏状态与登录信息走全局 store。</p>
-      </article>
-      <article class="card">
-        <h3>屏幕适配</h3>
-        <p>按 1920 设计稿，样式写 px，自动转 rem。</p>
-      </article>
-    </div>
-  </section>
+  <div class="home">
+    <aside class="col">
+      <ScreenPanel title="左侧内容" class="panel">
+        <p class="placeholder">左侧内容区域</p>
+      </ScreenPanel>
+    </aside>
+
+    <section class="center">
+      <ScreenPanel title="地图" class="panel">
+        <p class="placeholder">地图区域</p>
+      </ScreenPanel>
+    </section>
+
+    <aside class="col">
+      <ScreenPanel title="右侧内容" class="panel">
+        <p class="placeholder">右侧内容区域</p>
+      </ScreenPanel>
+    </aside>
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useStore } from 'vuex'
-
-const store = useStore()
-const userName = computed(() => store.getters['user/userName'])
+import ScreenPanel from '@/components/ScreenPanel.vue'
 </script>
 
 <style scoped lang="scss">
-.page {
-  h2 {
-    margin: 0 0 8px;
-    font-size: 24px;
-    color: #16382a;
-  }
-}
-
-.cards {
+.home {
+  height: 994px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 460px 1fr 460px;
   gap: 16px;
-  margin-top: 20px;
+  padding: 12px 20px 20px;
 }
 
-.card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 6px 18px rgba(22, 56, 42, 0.06);
+.col,
+.center {
+  display: flex;
+  min-height: 0;
+}
 
-  h3 {
-    margin: 0 0 8px;
-    color: #1f8a4c;
-  }
+.panel {
+  flex: 1;
+}
 
-  p {
-    margin: 0;
-    color: #5b6b64;
-    line-height: 1.6;
-  }
+.placeholder {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8fbfa8;
+  font-size: 20px;
+  letter-spacing: 4px;
 }
 </style>

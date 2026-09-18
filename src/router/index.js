@@ -17,13 +17,7 @@ export const constantRoutes = [
         path: 'home',
         name: 'Home',
         component: () => import('@/views/home/index.vue'),
-        meta: { title: '首页' }
-      },
-      {
-        path: 'about',
-        name: 'About',
-        component: () => import('@/views/about/index.vue'),
-        meta: { title: '关于' }
+        meta: { title: '养殖总览' }
       }
     ]
   },

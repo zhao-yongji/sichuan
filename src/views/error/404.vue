@@ -2,27 +2,29 @@
   <div class="not-found">
     <h1>404</h1>
     <p>页面不存在</p>
-    <router-link to="/home">返回首页</router-link>
+    <router-link to="/home">返回大屏</router-link>
   </div>
 </template>
 
 <style scoped lang="scss">
 .not-found {
-  min-height: 100vh;
+  width: 1920px;
+  height: 1080px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #16382a;
+  color: #d7efe4;
 }
 
 h1 {
   margin: 0;
-  font-size: 72px;
+  font-size: 96px;
+  color: #3ee08f;
 }
 
 a {
   margin-top: 16px;
-  color: #1f8a4c;
+  color: #f0c35a;
 }
 </style>

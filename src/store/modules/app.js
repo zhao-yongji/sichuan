@@ -1,32 +1,21 @@
-const SIDEBAR_KEY = 'tianfu_sidebar_collapsed'
-
 const state = {
-  sidebarCollapsed: localStorage.getItem(SIDEBAR_KEY) === '1',
-  device: 'desktop'
+  scale: 1
 }
 
 const mutations = {
-  TOGGLE_SIDEBAR(state) {
-    state.sidebarCollapsed = !state.sidebarCollapsed
-    localStorage.setItem(SIDEBAR_KEY, state.sidebarCollapsed ? '1' : '0')
-  },
-  SET_DEVICE(state, device) {
-    state.device = device
+  SET_SCALE(state, scale) {
+    state.scale = scale
   }
 }
 
 const actions = {
-  toggleSidebar({ commit }) {
-    commit('TOGGLE_SIDEBAR')
-  },
-  setDevice({ commit }, device) {
-    commit('SET_DEVICE', device)
+  setScale({ commit }, scale) {
+    commit('SET_SCALE', scale)
   }
 }
 
 const getters = {
-  sidebarCollapsed: (state) => state.sidebarCollapsed,
-  device: (state) => state.device
+  scale: (state) => state.scale
 }
 
 export default {

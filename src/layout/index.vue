@@ -1,151 +1,120 @@
 <template>
   <div class="layout">
-    <aside class="layout-sider" :class="{ collapsed: sidebarCollapsed }">
-      <div class="logo">{{ sidebarCollapsed ? '天' : '天府畜牧' }}</div>
-      <nav class="menu">
-        <router-link to="/home" class="menu-item">首页</router-link>
-        <router-link to="/about" class="menu-item">关于</router-link>
-      </nav>
-    </aside>
-    <div class="layout-main">
-      <header class="layout-header">
-        <button class="collapse-btn" type="button" @click="toggleSidebar">
-          {{ sidebarCollapsed ? '展开' : '收起' }}
-        </button>
-        <div class="header-right">
-          <span class="user-name">{{ userName }}</span>
-          <button class="logout-btn" type="button" @click="handleLogout">退出</button>
-        </div>
-      </header>
-      <main class="layout-content">
-        <router-view />
-      </main>
-    </div>
+    <header class="screen-header">
+      <div class="header-left">{{ nowText }}</div>
+      <h1 class="header-title">{{ title }}</h1>
+      <div class="header-right">
+        <span class="user">{{ userName }}</span>
+        <button type="button" class="logout" @click="handleLogout">退出</button>
+      </div>
+    </header>
+    <main class="screen-body">
+      <router-view />
+    </main>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useStore } from 'vuex'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
 
 const store = useStore()
 const router = useRouter()
+const nowText = ref('')
+let timer = null
 
-const sidebarCollapsed = computed(() => store.getters['app/sidebarCollapsed'])
-const userName = computed(() => store.getters['user/userName'] || '管理员')
+const title = computed(() => import.meta.env.VITE_APP_TITLE || '天府畜牧可视化大屏')
+const userName = computed(() => store.getters['user/userName'] || '值班员')
 
-function toggleSidebar() {
-  store.dispatch('app/toggleSidebar')
+function pad(num) {
+  return String(num).padStart(2, '0')
+}
+
+function tick() {
+  const d = new Date()
+  nowText.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 async function handleLogout() {
   await store.dispatch('user/logout')
   router.replace('/login')
 }
+
+onMounted(() => {
+  tick()
+  timer = window.setInterval(tick, 1000)
+})
+
+onBeforeUnmount(() => {
+  window.clearInterval(timer)
+})
 </script>
 
 <style scoped lang="scss">
 .layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f4f7f5;
-}
-
-.layout-sider {
-  width: 220px;
-  background: #16382a;
-  color: #fff;
-  transition: width 0.2s ease;
-  flex-shrink: 0;
-
-  &.collapsed {
-    width: 72px;
-
-    .menu-item {
-      text-align: center;
-      padding: 14px 8px;
-    }
-  }
-}
-
-.logo {
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.menu {
-  padding: 16px 12px;
-}
-
-.menu-item {
-  display: block;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.78);
-  border-radius: 8px;
-  text-decoration: none;
-
-  &.router-link-active {
-    background: #1f8a4c;
-    color: #fff;
-  }
-
-  &:hover {
-    color: #fff;
-  }
-}
-
-.layout-main {
-  flex: 1;
-  min-width: 0;
+  width: 1920px;
+  height: 1080px;
   display: flex;
   flex-direction: column;
 }
 
-.layout-header {
-  height: 64px;
-  background: #fff;
+.screen-header {
+  position: relative;
+  height: 86px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 0 36px 10px;
+  background:
+    linear-gradient(180deg, rgba(12, 48, 36, 0.85), transparent),
+    linear-gradient(90deg, transparent 8%, rgba(62, 224, 143, 0.18) 50%, transparent 92%);
+  border-bottom: 1px solid rgba(62, 224, 143, 0.28);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 520px;
+    height: 3px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, #3ee08f, transparent);
+  }
+}
+
+.header-title {
+  margin: 0;
+  font-size: 36px;
+  letter-spacing: 8px;
+  color: #f3fff8;
+  text-shadow: 0 0 18px rgba(62, 224, 143, 0.45);
+}
+
+.header-left,
+.header-right {
+  width: 360px;
+  color: #9fdcbf;
+  font-size: 18px;
 }
 
 .header-right {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 16px;
 }
 
-.user-name {
-  color: #333;
-}
-
-.collapse-btn,
-.logout-btn {
-  border: 0;
-  background: #eef6f1;
-  color: #1f8a4c;
-  padding: 8px 14px;
-  border-radius: 6px;
+button {
+  border: 1px solid rgba(62, 224, 143, 0.4);
+  background: rgba(10, 36, 28, 0.7);
+  color: #d7efe4;
+  padding: 6px 12px;
   cursor: pointer;
 }
 
-.logout-btn {
-  background: #fff1f0;
-  color: #d4380d;
-}
-
-.layout-content {
-  padding: 24px;
-  flex: 1;
+.logout {
+  border-color: rgba(240, 195, 90, 0.45);
+  color: #f0c35a;
 }
 </style>

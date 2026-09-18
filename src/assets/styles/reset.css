@@ -10,20 +10,23 @@ body,
   margin: 0;
   padding: 0;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 16px;
-  color: #1f2a25;
-  background: #f4f7f5;
+  color: #d7efe4;
+  background: #030807;
+  user-select: none;
 }
 
 ul,
 ol {
   margin: 0;
-  padding: 0 0 0 20px;
+  padding: 0;
+  list-style: none;
 }
 
 button,

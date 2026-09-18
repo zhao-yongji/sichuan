@@ -1,15 +1,13 @@
-# 天府畜牧 Vue3 模板
+# 天府畜牧可视化大屏
 
-Vue 3 + Vite 脚手架（JavaScript，不使用 TypeScript），已包含路由、接口封装、Vuex 和屏幕适配。
+Vue 3 + Vite 大屏模板（JavaScript，不使用 TypeScript）。按 **1920×1080** 设计，横向纵向分别缩放，直接铺满窗口。
 
 ## 技术栈
 
-- Vue 3（Composition API + `<script setup>`）
-- Vue Router 4
-- Vuex 4
-- Axios
-- Vite 5
-- postcss-pxtorem + flexible（按 1920 设计稿适配）
+- Vue 3 + Vue Router 4 + Vuex 4
+- Axios 接口封装
+- ECharts 图表
+- 1920×1080 scale 屏幕适配
 
 ## 开始使用
 
@@ -18,74 +16,33 @@ npm install
 npm run dev
 ```
 
-打包：
-
-```bash
-npm run build
-```
-
-开发环境默认开启 mock，登录页任意账号密码即可进入。对接真实接口时，把 `.env.development` 里的 `VITE_USE_MOCK` 改为 `false`。
+开发服务默认端口 `5180`。开发环境开启 mock，登录页任意账号密码即可进入大屏。
 
 ## 目录说明
 
 ```text
 src
-├─ api            接口封装（request 拦截器 + 业务模块）
-├─ assets         全局样式
-├─ config         设计稿宽度、Token Key 等配置
-├─ layout         登录后布局
+├─ api            接口封装
+├─ components     大屏面板 / 图表 / 指标卡
+├─ layout         大屏顶栏（时间、标题）
 ├─ router         路由与守卫
-├─ store          Vuex（user / app）
-├─ utils          Token、屏幕适配
-└─ views          页面
+├─ store          user / app / screen
+├─ utils          Token、屏幕缩放
+└─ views          登录页、主屏
 ```
-
-## 路由
-
-在 `src/router/index.js` 的 `constantRoutes` 中新增页面。需要登录的页面放到 `/` 布局的 `children` 里；登录页、404 设置 `meta.public: true`。
-
-## 接口
-
-1. 在 `.env.development` 配置 `VITE_API_BASE_URL`
-2. 在 `src/api/modules` 按业务拆分接口
-3. 统一走 `src/api/request.js`：自动带 Token，`code !== 200` 或 401 会退出登录
-
-示例：
-
-```js
-import { get, post } from '@/api/request'
-
-export function fetchHerdList(params) {
-  return get('/herd/list', params)
-}
-```
-
-后端约定成功码为 `200`，如需调整请改 `src/api/request.js`。
-
-## Vuex
-
-```js
-import { useStore } from 'vuex'
-
-const store = useStore()
-store.dispatch('user/login', form)
-store.getters['user/userName']
-store.dispatch('app/toggleSidebar')
-```
-
-新增模块放到 `src/store/modules`，并在 `src/store/index.js` 注册。
 
 ## 屏幕适配
 
-默认按 **1920** 设计稿：
+样式按 1920×1080 写 **px**。`src/utils/fitScreen.js` 会按窗口宽高分别缩放，铺满整个屏幕。
 
-- `src/utils/flexible.js` 根据屏幕宽度设置 `html` 的 `font-size`
-- `postcss-pxtorem` 把样式里的 px 转成 rem
-- 样式按设计稿写 px 即可，例如 `width: 220px`
+设计稿尺寸改 `src/config/index.js` 的 `DESIGN_WIDTH` / `DESIGN_HEIGHT`。
 
-若设计稿是 375（H5），同时改两处：
+## 加一块新面板
 
-1. `src/config/index.js` 的 `DESIGN_WIDTH = 375`
-2. `postcss.config.js` 的 `rootValue` 改为 `37.5`，并把 `flexible.js` 的 `BASE_SIZE` 改为 `37.5`
+1. 在 `src/views/home/index.vue` 用 `ScreenPanel` 包一层
+2. 图表用 `VChart`，传入 ECharts `option`
+3. 数据放到 `src/store/modules/screen.js`，接口写在 `src/api/modules/screen.js`
 
-不需要转换的样式类名加 `.norem` 或 `.ignore-rem`。
+## 对接后端
+
+把 `.env.development` 的 `VITE_USE_MOCK` 改为 `false`，并配置 `VITE_API_BASE_URL`。主屏默认每 30 秒刷新一次数据。

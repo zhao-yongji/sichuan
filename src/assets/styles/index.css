@@ -2,4 +2,25 @@
 
 a {
   color: inherit;
+  text-decoration: none;
+}
+
+.screen-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #020605;
+}
+
+.screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: left top;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(46, 180, 110, 0.16), transparent 42%),
+    linear-gradient(180deg, #071410 0%, #04100c 55%, #020807 100%);
 }
