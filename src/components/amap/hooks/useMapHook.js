@@ -56,6 +56,90 @@ const getColorByAdcode = (adcode) => {
 };
 
 /**
+ * 生成两点之间的弧线路径（二次贝塞尔曲线采样，视觉上比直线更柔和）
+ */
+const genArcPath = (start, end, ratio = 0.15) => {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  // 控制点：线段中点沿垂直方向偏移
+  const ctrlLng = (start[0] + end[0]) / 2 - dy * ratio;
+  const ctrlLat = (start[1] + end[1]) / 2 + dx * ratio;
+
+  const points = [];
+  for (let t = 0; t <= 1.0001; t += 0.05) {
+    const mt = 1 - t;
+    points.push([
+      mt * mt * start[0] + 2 * mt * t * ctrlLng + t * t * end[0],
+      mt * mt * start[1] + 2 * mt * t * ctrlLat + t * t * end[1],
+    ]);
+  }
+  return points;
+};
+
+/**
+ * 生成脉冲线假数据：成都 <-> 各市州（流入/流出双向）+ 呼吸点
+ * lineWidthRatio 按城市 count 归一化（无数据则随机），控制线宽与呼吸点大小
+ */
+const genPulseLineData = () => {
+  const chengdu = [cityData[510100].lng, cityData[510100].lat];
+  const MAX_COUNT = 543090; // 达州（数据中的最大值）
+  const inFeatures = [];
+  const outFeatures = [];
+  const scatterFeatures = [];
+
+  Object.entries(cityData).forEach(([adcode, city]) => {
+    // 成都自身只生成中心大呼吸点
+    if (adcode === "510100") return;
+
+    const point = [city.lng, city.lat];
+    const ratio =
+      city.count > 0
+        ? Math.min(city.count / MAX_COUNT, 1)
+        : +(Math.random() * 0.5 + 0.2).toFixed(2);
+
+    // 流入成都
+    inFeatures.push({
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: genArcPath(point, chengdu, 0.12),
+      },
+      properties: { lineWidthRatio: ratio },
+    });
+
+    // 从成都流出（弧线偏移方向相反，避免与流入线重叠）
+    outFeatures.push({
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: genArcPath(chengdu, point, -0.12),
+      },
+      properties: { lineWidthRatio: ratio },
+    });
+
+    // 各市州呼吸点
+    scatterFeatures.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: point },
+      properties: { lineWidthRatio: ratio },
+    });
+  });
+
+  // 成都中心的大呼吸点
+  scatterFeatures.push({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: chengdu },
+    properties: { lineWidthRatio: 1 },
+  });
+
+  return {
+    inData: { type: "FeatureCollection", features: inFeatures },
+    outData: { type: "FeatureCollection", features: outFeatures },
+    scatterData: { type: "FeatureCollection", features: scatterFeatures },
+  };
+};
+
+/**
  * 加载高德地图 SDK
  */
 export const loadMap = async (key, securityCode) => {
@@ -75,18 +159,39 @@ export const loadMap = async (key, securityCode) => {
 };
 
 /**
+ * 动态加载 Loca 数据可视化库（脉冲线等图层依赖，必须在 JSAPI 之后加载）
+ */
+export const loadLoca = (key) => {
+  return new Promise((resolve, reject) => {
+    if (window.Loca && window.Loca.Container) {
+      resolve(window.Loca);
+      return;
+    }
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = `https://webapi.amap.com/loca?v=2.0.0&key=${key}`;
+    script.onload = () => resolve(window.Loca);
+    script.onerror = () => reject(new Error("Loca 库加载失败"));
+    document.head.appendChild(script);
+  });
+};
+
+/**
  * 地图 Hook
  * @param {Ref<HTMLElement>} containerRef 地图容器引用
  */
 export const useMap = (containerRef) => {
   const mapInstance = shallowRef(null);
   let textMarkers = [];
+  let locaContainer = null; // Loca 容器（脉冲线、呼吸点图层）
 
   const initMap = async () => {
     if (!containerRef.value) return;
 
     try {
       const AMap = await loadMap(DEFAULT_MAP_KEY, DEFAULT_MAP_SECURITY_KEY);
+      // Loca 依赖全局 AMap，需在 JSAPI 加载完成后再加载
+      const Loca = await loadLoca(DEFAULT_MAP_KEY);
 
       // 获取四川省边界数据
       const districtSearch = new AMap.DistrictSearch({
@@ -196,6 +301,77 @@ export const useMap = (containerRef) => {
             textMarkers.push(textMarker);
           });
 
+          // 4. 基于 Loca 添加脉冲线图层（参考高德官方"北京流入流出"示例，假数据）
+          const loca = new Loca.Container({ map });
+          locaContainer = loca;
+
+          const { inData, outData, scatterData } = genPulseLineData();
+
+          // 流入成都方向的线（浅黄绿脉冲头 + 青色拖尾）
+          const inLineLayer = new Loca.PulseLineLayer({
+            zIndex: 141,
+            opacity: 1,
+            visible: true,
+            zooms: [2, 22],
+          });
+          inLineLayer.setStyle({
+            altitude: 0,
+            lineWidth: (_, feature) =>
+              feature.properties.lineWidthRatio * 4 + 1,
+            headColor: "#ECFFB1",
+            trailColor: "rgba(20,105,104, 0.2)",
+            interval: 0.5,
+            duration: 2000,
+          });
+          inLineLayer.setSource(new Loca.GeoJSONSource({ data: inData }));
+          loca.add(inLineLayer);
+
+          // 从成都流出方向的线（橙色脉冲头，脉冲间隔更小、节奏更慢）
+          const outLineLayer = new Loca.PulseLineLayer({
+            zIndex: 141,
+            opacity: 1,
+            visible: true,
+            zooms: [2, 22],
+          });
+          outLineLayer.setStyle({
+            altitude: 0,
+            lineWidth: (_, feature) =>
+              feature.properties.lineWidthRatio * 1 + 3,
+            headColor: "#FFB20D",
+            trailColor: "rgba(255,178,6, 0.2)",
+            interval: 0.25,
+            duration: 5000,
+          });
+          outLineLayer.setSource(new Loca.GeoJSONSource({ data: outData }));
+          loca.add(outLineLayer);
+
+          // 呼吸点层（各市州 + 成都中心，尺寸随 lineWidthRatio 变化）
+          const scatterLayer = new Loca.ScatterLayer({
+            zIndex: 140,
+            opacity: 1,
+            visible: true,
+            zooms: [2, 22],
+          });
+          scatterLayer.setSource(
+            new Loca.GeoJSONSource({ data: scatterData })
+          );
+          scatterLayer.setStyle({
+            unit: "px",
+            size: (_, feature) => {
+              const size = feature.properties.lineWidthRatio * 2 + 30;
+              return [size, size];
+            },
+            borderWidth: 0,
+            texture:
+              "https://a.amap.com/Loca/static/loca-v2/demos/images/breath_yellow.png",
+            duration: 2000,
+            animate: true,
+          });
+          loca.add(scatterLayer);
+
+          // 启动动画驱动（脉冲流动与呼吸点动画依赖此循环）
+          loca.animate.start();
+
           // 调整视野
           map.setFitView(null, false, [20, 20, 20, 20]);
         }
@@ -213,6 +389,12 @@ export const useMap = (containerRef) => {
     // 销毁标签
     textMarkers.forEach((marker) => marker.setMap(null));
     textMarkers = [];
+
+    // 销毁 Loca 容器（同时释放脉冲线、呼吸点图层及动画循环）
+    if (locaContainer) {
+      locaContainer.destroy();
+      locaContainer = null;
+    }
 
     if (mapInstance.value) {
       mapInstance.value.destroy();
