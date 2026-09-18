@@ -137,24 +137,37 @@ export const useMap = (containerRef) => {
           });
           map.add(disProvince);
 
-          // 2. 绘制阴影和外边界
+          // 2. 绘制多层阴影和外边界以产生 3D 立体感
           boundaries.forEach((bounds) => {
-            // 阴影 Polygon (向右下偏移产生立体感)
-            const shadowPath = bounds.map((p) => [p.lng + 0.05, p.lat - 0.05]);
+            // 最底层的深色阴影 (偏移量最大)
+            const shadowPath1 = bounds.map((p) => [p.lng + 0.04, p.lat - 0.09]);
             new AMap.Polygon({
-              path: shadowPath,
-              fillColor: "#2a5482",
+              path: shadowPath1,
+              fillColor: "#1E3B5C", // 深色投影
               fillOpacity: 1,
-              strokeWeight: 0,
+              strokeColor: "#1E3B5C", // 同色描边，避免缝隙
+              strokeWeight: 2,
+              zIndex: 108,
+              map: map,
+            });
+
+            // 中间的过渡层阴影 (偏移量中等，带青色描边)
+            const shadowPath2 = bounds.map((p) => [p.lng + 0.02, p.lat - 0.05]);
+            new AMap.Polygon({
+              path: shadowPath2,
+              fillColor: "#5E95B8", // 中间层底色
+              fillOpacity: 1,
+              strokeColor: "#86C8D6", // 浅青色描边
+              strokeWeight: 4, // 较粗的描边以形成层级感
               zIndex: 110,
               map: map,
             });
 
-            // 主描边
+            // 主边界的白色高亮描边 (无偏移)
             new AMap.Polyline({
               path: bounds,
               strokeColor: "#ffffff",
-              strokeWeight: 2,
+              strokeWeight: 3, // 稍微加粗，使其更清晰
               strokeOpacity: 1,
               zIndex: 130,
               map: map,

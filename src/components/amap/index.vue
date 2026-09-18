@@ -5,20 +5,11 @@
         <circle
           cx="100"
           cy="100"
-          r="98"
+          r="85"
           fill="none"
           stroke="rgba(255,255,255,0.4)"
           stroke-width="0.5"
           stroke-dasharray="60 5 10 5"
-        />
-        <circle
-          cx="100"
-          cy="100"
-          r="92"
-          fill="none"
-          stroke="rgba(255,255,255,0.2)"
-          stroke-width="0.3"
-          stroke-dasharray="10 5"
         />
       </svg>
     </div>
@@ -39,7 +30,7 @@ const { map } = useMap(mapRef);
   width: 100%;
   height: 100%;
   position: relative;
-  background: #091a3d; // 纯色深蓝背景
+  background: transparent; // 纯色深蓝背景
   overflow: hidden;
 
   .spinning-circle-wrapper {
