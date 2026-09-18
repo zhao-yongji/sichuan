@@ -8,7 +8,7 @@
 
     <section class="center">
       <ScreenPanel title="地图" class="panel">
-        <p class="placeholder">地图区域</p>
+        <Amap />
       </ScreenPanel>
     </section>
 
@@ -21,7 +21,8 @@
 </template>
 
 <script setup>
-import ScreenPanel from '@/components/ScreenPanel.vue'
+import ScreenPanel from "@/components/ScreenPanel.vue";
+import Amap from "@/components/amap/index.vue";
 </script>
 
 <style scoped lang="scss">
