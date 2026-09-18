@@ -10,55 +10,57 @@ import AMapLoader from "@amap/amap-jsapi-loader";
 
 const mapRef = ref(null);
 const mapInstance = shallowRef(null);
-let heatmapInstance = null; // 热力图实例（非响应式，避免深层代理）
+let textMarkers = [];
 
-/**
- * 生成热力图假数据（四川省主要城市中心 + 周边随机散点）
- * 数据格式与参考项目一致：{ lng, lat, count }
- */
-const generateHeatmapData = () => {
-  // 21 个市州中心坐标及基础热度
-  const cityCenters = [
-    { lng: 104.065735, lat: 30.659462, count: 100 }, // 成都
-    { lng: 104.679642, lat: 31.467975, count: 75 }, // 绵阳
-    { lng: 104.398127, lat: 31.127901, count: 60 }, // 德阳
-    { lng: 105.443432, lat: 28.871806, count: 55 }, // 泸州
-    { lng: 104.641715, lat: 28.751312, count: 65 }, // 宜宾
-    { lng: 103.767263, lat: 29.552563, count: 50 }, // 乐山
-    { lng: 106.087005, lat: 30.793128, count: 58 }, // 南充
-    { lng: 107.468363, lat: 31.209494, count: 52 }, // 达州
-    { lng: 103.045798, lat: 29.986323, count: 40 }, // 雅安
-    { lng: 105.843432, lat: 32.435372, count: 38 }, // 广元
-    { lng: 105.573514, lat: 30.515384, count: 42 }, // 遂宁
-    { lng: 105.058588, lat: 29.580228, count: 45 }, // 内江
-    { lng: 106.633343, lat: 30.456476, count: 44 }, // 广安
-    { lng: 106.747614, lat: 31.869098, count: 36 }, // 巴中
-    { lng: 103.832645, lat: 30.04834, count: 43 }, // 眉山
-    { lng: 104.627936, lat: 30.128194, count: 46 }, // 资阳
-    { lng: 104.776116, lat: 29.339243, count: 48 }, // 自贡
-    { lng: 101.718637, lat: 26.582347, count: 35 }, // 攀枝花
-    { lng: 102.221374, lat: 31.899792, count: 30 }, // 阿坝
-    { lng: 101.963811, lat: 30.049522, count: 28 }, // 甘孜
-    { lng: 102.267306, lat: 27.88174, count: 32 }, // 凉山
-  ];
+// 城市数据及颜色映射
+const cityData = {
+  510100: { name: "成都市", count: 0, lng: 104.065735, lat: 30.659462 },
+  510700: { name: "绵阳市", count: 0, lng: 104.679642, lat: 31.467975 },
+  510600: { name: "德阳市", count: 0, lng: 104.398127, lat: 31.127901 },
+  510500: { name: "泸州市", count: 348983, lng: 105.443432, lat: 28.871806 },
+  511500: { name: "宜宾市", count: 0, lng: 104.641715, lat: 28.751312 },
+  511100: { name: "乐山市", count: 0, lng: 103.767263, lat: 29.552563 },
+  511300: { name: "南充市", count: 310641, lng: 106.087005, lat: 30.793128 },
+  511700: { name: "达州市", count: 543090, lng: 107.468363, lat: 31.209494 },
+  511800: { name: "雅安市", count: 11270, lng: 103.045798, lat: 29.986323 },
+  510800: { name: "广元市", count: 0, lng: 105.843432, lat: 32.435372 },
+  510900: { name: "遂宁市", count: 0, lng: 105.573514, lat: 30.515384 },
+  511000: { name: "内江市", count: 157201, lng: 105.058588, lat: 29.580228 },
+  511600: { name: "广安市", count: 22409, lng: 106.633343, lat: 30.456476 },
+  511900: { name: "巴中市", count: 0, lng: 106.747614, lat: 31.869098 },
+  511400: { name: "眉山市", count: 0, lng: 103.832645, lat: 30.04834 },
+  512000: { name: "资阳市", count: 0, lng: 104.627936, lat: 30.128194 },
+  510300: { name: "自贡市", count: 0, lng: 104.776116, lat: 29.339243 },
+  510400: { name: "攀枝花市", count: 0, lng: 101.718637, lat: 26.582347 },
+  513200: {
+    name: "阿坝藏族羌族自治州",
+    count: 26897,
+    lng: 102.221374,
+    lat: 31.899792,
+  },
+  513300: {
+    name: "甘孜藏族自治州",
+    count: 14311,
+    lng: 101.963811,
+    lat: 30.049522,
+  },
+  513400: {
+    name: "凉山彝族自治州",
+    count: 30202,
+    lng: 102.267306,
+    lat: 27.88174,
+  },
+};
 
-  const data = [];
-  cityCenters.forEach((city) => {
-    // 城市中心主热力点
-    data.push({ lng: city.lng, lat: city.lat, count: city.count });
+const getColorByAdcode = (adcode) => {
+  const data = cityData[adcode];
+  if (!data) return "#062253"; // 默认深蓝色
 
-    // 周边随机散点，模拟真实数据分布
-    const scatterCount = 3 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < scatterCount; i += 1) {
-      data.push({
-        lng: city.lng + (Math.random() - 0.5) * 0.7,
-        lat: city.lat + (Math.random() - 0.5) * 0.5,
-        count: Math.floor(Math.random() * 50) + 10,
-      });
-    }
-  });
-
-  return data;
+  const count = data.count;
+  if (count >= 300000) return "#d32029"; // 红色
+  if (count >= 30000) return "#f37826"; // 橙色
+  if (count > 0) return "#ffc424"; // 黄色
+  return "#062253"; // 无数据时的深蓝色
 };
 
 const initMap = async () => {
@@ -70,7 +72,7 @@ const initMap = async () => {
     const AMap = await AMapLoader.load({
       key: "496fae1930a5be230b42266fc3524b1d", // 复用参考项目的 Key
       version: "2.0",
-      plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer", "AMap.HeatMap"],
+      plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer"],
     });
 
     // 获取四川省边界数据
@@ -95,30 +97,26 @@ const initMap = async () => {
           center: [104.065735, 30.659462], // 成都
           zoom: 6.5,
           viewMode: "2D",
-          pitch: 35,
+          pitch: 0,
           rotation: 0,
           mask: mask, // 掩膜，只显示四川省内
-          mapStyle: "amap://styles/blue",
+          mapStyle: "amap://styles/darkblue",
           skyColor: "transparent",
           showLabel: false,
-          features: ["bg"],
+          features: [], // 不显示默认底图要素
         });
 
         mapInstance.value = map;
 
-        // 1. 添加卫星图层 (受 mask 限制，只显示四川省内)
-        const satelliteLayer = new AMap.TileLayer.Satellite({
-          zIndex: 10,
-        });
-        map.add(satelliteLayer);
-
-        // 2. 添加市级行政区划图层，用于绘制地市边界
+        // 1. 添加市级行政区划图层，用于绘制地市边界和填充颜色
         const disProvince = new AMap.DistrictLayer.Province({
           zIndex: 120,
           adcode: ["510000"],
           depth: 1,
           styles: {
-            fill: "transparent", // 内部透明，露出卫星图
+            fill: (properties) => {
+              return getColorByAdcode(properties.adcode);
+            },
             "province-stroke": "#00e5ff",
             "city-stroke": "rgba(0, 229, 255, 0.6)",
             "county-stroke": "transparent",
@@ -126,7 +124,7 @@ const initMap = async () => {
         });
         map.add(disProvince);
 
-        // 3. 绘制外边界的高亮线和发光线
+        // 2. 绘制外边界的高亮线和发光线
         boundaries.forEach((bounds) => {
           // 主描边
           new AMap.Polyline({
@@ -149,24 +147,26 @@ const initMap = async () => {
           });
         });
 
-        // 5. 添加热力图（参考 sldz_jczl_web 大屏 useMapHook 的实现，假数据）
-        const heatmapData = generateHeatmapData();
-        // 热力渐变最大值取数据中的最大 count，防止颜色渐变漂移
-        const heatmapMax = Math.max(...heatmapData.map((d) => d.count));
-
-        heatmapInstance = new AMap.HeatMap(map, {
-          radius: 30, // 省级视野（zoom 6.5）下适当增大半径
-          opacity: [0, 0.8],
-          gradient: {
-            0.4: "#55ce64", // 低 (绿色)
-            0.7: "#e19a53", // 中 (橙色)
-            1.0: "#e03d52", // 高 (红色)
-          },
-        });
-
-        heatmapInstance.setDataSet({
-          data: heatmapData,
-          max: heatmapMax,
+        // 3. 添加城市名称和数值标签
+        Object.values(cityData).forEach((city) => {
+          const text =
+            city.count > 0 ? `${city.name} ${city.count}` : city.name;
+          const textMarker = new AMap.Text({
+            text: text,
+            position: [city.lng, city.lat],
+            anchor: "center",
+            zIndex: 150,
+            style: {
+              "background-color": "transparent",
+              "border-width": 0,
+              color: "#ffffff",
+              "font-size": "12px",
+              "font-weight": "normal",
+              "text-shadow": "0 0 2px rgba(0,0,0,0.8)",
+            },
+          });
+          textMarker.setMap(map);
+          textMarkers.push(textMarker);
         });
 
         // 调整视野
@@ -183,11 +183,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // 先销毁热力图，释放 Canvas 资源
-  if (heatmapInstance) {
-    heatmapInstance.setMap(null);
-    heatmapInstance = null;
-  }
+  // 销毁标签
+  textMarkers.forEach((marker) => marker.setMap(null));
+  textMarkers = [];
+
   if (mapInstance.value) {
     mapInstance.value.destroy();
     mapInstance.value = null;
@@ -200,7 +199,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   position: relative;
-  background: transparent;
+  background: #091a3d; // 纯色深蓝背景
 
   .map-view {
     width: 100%;
