@@ -9,7 +9,7 @@
     </div>
     <div class="content">
       <div class="left-tree">
-        <!-- 左边的树（先不实现） -->
+        <AreaTree />
       </div>
       <div class="right-box">
         <!-- 右侧的框（先不实现） -->
@@ -19,6 +19,8 @@
 </template>
 
 <script setup>
+import AreaTree from "./AreaTree.vue";
+
 const emit = defineEmits(["close"]);
 
 const close = () => {
@@ -115,11 +117,9 @@ defineProps({
     min-height: 0;
 
     .left-tree {
-      width: 280px;
-      height: 100%;
-      /* 临时边框，方便看效果 */
-      border: 1px dashed rgba(255, 255, 255, 0.3);
-      border-radius: 4px;
+      width: 253px;
+      height: 648px;
+      flex-shrink: 0;
     }
 
     .right-box {

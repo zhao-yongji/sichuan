@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
       open: true,
       proxy: {
         [env.VITE_APP_BASE_API]: {
-          target: env.VITE_API_BASE_URL,
+          target: "http://192.168.0.95:31307/",
           changeOrigin: true,
           rewrite: (path) => path.replace(new RegExp(`^${env.VITE_APP_BASE_API}`), '')
         }
