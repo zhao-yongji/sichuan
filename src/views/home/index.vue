@@ -79,6 +79,7 @@
           v-if="popupName === 'productionPopup'"
           @close="popupVisible = false"
         />
+        <component :is="popupComponents[popupName]" @close="popupVisible = false" />
       </div>
     </Popup>
   </div>
@@ -99,6 +100,18 @@ import Amap from "@/components/amap/index.vue";
 
 // 初始化基础数据共享 (provide)
 useBaseDataHook();
+import { ref } from 'vue'
+import { message } from 'ant-design-vue'
+import ScreenPanel from '@/components/ScreenPanel.vue'
+import BlockPanel from '@/components/BlockPanel.vue'
+import Production from './components/production.vue'
+import ProductionDetail from './components/productionDetail.vue'
+import WarningDetail from './components/warningDetail.vue'
+import Circulation from './components/circulation.vue'
+import Warning from './components/warning.vue'
+import Price from './components/price.vue'
+import Popup from '@/components/Popup.vue'
+import Amap from '@/components/amap/index.vue'
 
 const productionData = {
   farmTotal: 5324,
@@ -144,17 +157,26 @@ function switchAnimal(step) {
 }
 
 const navs = [
-  { key: "analysis", label: "分析统计" },
-  { key: "epidemic", label: "动物防疫" },
-  { key: "quarantine", label: "动物检疫" },
-  { key: "slaughter", label: "屠宰监管" },
-];
+  { key: 'analysis', label: '分析统计' },
+  { key: 'epidemic', label: '动物防疫' },
+  { key: 'quarantine', label: '动物检疫' },
+  { key: 'slaughter', label: '屠宰监管' }
+]
 
-const popupName = ref("");
-const popupVisible = ref(false);
+const popupName = ref('')
+const popupVisible = ref(false)
+const popupComponents = {
+  productionPopup: ProductionDetail,
+  warningPopup: WarningDetail
+}
+
 function onSearchMore(popup) {
-  popupName.value = popup;
-  popupVisible.value = true;
+  if (popup === 'warningPopup' && animalKey.value !== 'pig') {
+    message.warning('暂无对应动物的详情数据')
+    return
+  }
+  popupName.value = popup
+  popupVisible.value = true
 }
 </script>
 

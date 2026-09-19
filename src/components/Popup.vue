@@ -31,7 +31,7 @@ function onMaskClick() {
 .popup {
   position: absolute;
   inset: 0;
-  z-index: 200;
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
