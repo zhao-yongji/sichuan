@@ -97,7 +97,7 @@ function format(value, digits) {
 
       .title {
         margin: 0;
-        color: #c5e6fa;
+        color: #ffffff;
         font-size: 16px;
         line-height: 1;
       }
@@ -125,7 +125,7 @@ function format(value, digits) {
 
           em {
             font-style: normal;
-            color: #c5e6fa;
+            color: #ffffff;
             font-size: 14px;
           }
 
@@ -142,7 +142,7 @@ function format(value, digits) {
         white-space: nowrap;
 
         span {
-          color: #9fd2f0;
+          color: #ffffff;
           font-size: 13px;
         }
 

@@ -2,7 +2,7 @@
   <div class="block-panel">
     <div class="block-header">
       <div class="block-title">{{ title }}</div>
-      <div v-if="url" class="searchMore" @click="goMore">
+      <div class="searchMore" @click="searchMore">
         <span>查看更多</span>
         <span class="icon"></span>
       </div>
@@ -14,28 +14,21 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-
 const props = defineProps({
   title: {
     type: String,
     default: ''
   },
-  url: {
+  popup: {
     type: String,
     default: ''
   }
 })
 
-const router = useRouter()
+const emit = defineEmits(['searchMore'])
 
-function goMore() {
-  if (!props.url) return
-  if (/^https?:\/\//.test(props.url)) {
-    window.open(props.url, '_blank')
-    return
-  }
-  router.push(props.url)
+function searchMore() {
+  emit('searchMore', props.popup)
 }
 </script>
 
