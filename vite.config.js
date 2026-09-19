@@ -24,10 +24,11 @@ export default defineConfig(({ mode }) => {
       port: 5180,
       open: true,
       proxy: {
-        [env.VITE_APP_BASE_API]: {
-          target: "http://192.168.0.95:31307/",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(new RegExp(`^${env.VITE_APP_BASE_API}`), '')
+        "/slau": {
+          // 以 /slau 开头的请求代理到后端服务，并去掉 /slau 前缀
+          target: "http://192.168.0.95:31307/", // 目标服务器
+          changeOrigin: true, // 代理请求时将原始请求的 Host 头部换成目标服务器的 Host
+          rewrite: (path) => path.replace(/^\/slau/, ""), // 重写路径
         }
       }
     }

@@ -10,7 +10,8 @@ const service = axios.create({
 service.interceptors.request.use(
   (config) => {
     const token = getToken()
-    if (token) {
+    // 不覆盖调用方显式设置的 Authorization（如登录接口的 Basic 头）
+    if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -30,10 +31,17 @@ service.interceptors.response.use(
     return res
   },
   (error) => {
-    if (error.response?.status === 401) {
+    // 兼容 OAuth2 / 网关错误体，提取可读信息
+    const msg =
+      error.response?.data?.meta?.message ||
+      error.response?.data?.error_description ||
+      error.response?.data?.message ||
+      '网络异常，请稍后重试'
+    // 424：账号被禁用/锁定等认证异常，与 401 同样清理凭证回登录页
+    if (error.response?.status === 401 || error.response?.status === 424) {
       redirectToLogin()
     }
-    return Promise.reject(error)
+    return Promise.reject(new Error(msg))
   }
 )
 

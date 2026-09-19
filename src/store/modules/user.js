@@ -36,9 +36,9 @@ const actions = {
       return
     }
 
+    // OAuth2 密码模式：响应体直接返回 access_token
     const res = await loginApi(form)
-    const token = res.data?.token || res.token
-    commit('SET_TOKEN', token)
+    commit('SET_TOKEN', res.access_token)
     await dispatch('getInfo')
   },
 
