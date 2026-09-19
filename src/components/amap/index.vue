@@ -6,6 +6,11 @@
       <a-switch v-model:checked="showHeatmap" />
     </div>
 
+    <!-- 左上角返回上一级（下钻后显示） -->
+    <div v-if="currentLevel !== 'province'" class="back-btn" @click="goBack">
+      <span class="back-icon"></span>返回上一级
+    </div>
+
     <div class="spinning-circle-wrapper">
       <svg class="spinning-circle" viewBox="0 0 200 200">
         <circle
@@ -29,7 +34,7 @@ import { Switch as ASwitch } from "ant-design-vue";
 import { useMap } from "./hooks/useMapHook";
 
 const mapRef = ref(null);
-const { map, showHeatmap } = useMap(mapRef);
+const { map, showHeatmap, currentLevel, goBack } = useMap(mapRef);
 </script>
 
 <style scoped lang="scss">
@@ -66,6 +71,41 @@ const { map, showHeatmap } = useMap(mapRef);
     }
   }
 
+  .back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: 20px;
+    background: rgba(16, 60, 124, 0.8);
+    border: 1px solid rgba(102, 204, 255, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    color: #9cf4ff;
+    font-size: 14px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    transition: all 0.3s;
+
+    .back-icon {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-left: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg);
+      margin-right: 8px;
+    }
+
+    &:hover {
+      color: #ffffff;
+      background: rgba(30, 90, 170, 0.9);
+      box-shadow: 0 2px 12px rgba(56, 162, 255, 0.4);
+    }
+  }
+
   .spinning-circle-wrapper {
     position: absolute;
     top: 50%;
@@ -89,6 +129,11 @@ const { map, showHeatmap } = useMap(mapRef);
     background: transparent !important;
     position: relative;
     z-index: 1;
+  }
+
+  // Loca canvas 不响应鼠标事件，避免遮挡下层交互 Polygon 的下钻点击
+  :deep(.amap-loca) {
+    pointer-events: none !important;
   }
 
   :deep(.amap-logo),
