@@ -93,6 +93,7 @@ import WarningDetail from './components/warningDetail.vue'
 import Circulation from './components/circulation.vue'
 import Warning from './components/warning.vue'
 import Price from './components/price.vue'
+import PriceDetail from './components/priceDetail.vue'
 import Popup from '@/components/Popup.vue'
 import Amap from '@/components/amap/index.vue'
 
@@ -152,7 +153,8 @@ const popupName = ref('')
 const popupVisible = ref(false)
 const popupComponents = {
   productionPopup: ProductionDetail,
-  warningPopup: WarningDetail
+  warningPopup: WarningDetail,
+  pricePopup: PriceDetail
 }
 
 function onSearchMore(popup) {
