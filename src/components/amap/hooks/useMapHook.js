@@ -27,6 +27,7 @@ export const loadMap = async (key, securityCode) => {
     version: "2.0",
     plugins: [
       "AMap.DistrictSearch",
+      "AMap.DistrictLayer",
       "AMap.Object3DLayer",
       "AMap.MoveAnimation",
     ],
@@ -138,32 +139,50 @@ export const useMap = (containerRef) => {
     });
   };
 
+  const SUB_STROKE = "rgba(102, 204, 255, 0.95)";
+
+  const getLayerStyles = (level) => ({
+    fill: (properties) =>
+      showHeatmap.value
+        ? getColorByAdcode(properties.adcode)
+        : "rgba(75, 147, 233, 0.04)",
+    "stroke-width": level === "province" ? 1.5 : 2,
+    "province-stroke": "transparent",
+    "city-stroke": level === "province" ? SUB_STROKE : "transparent",
+    "county-stroke": level === "city" ? SUB_STROKE : "transparent",
+  });
+
   /**
    * 重建行政区划图层（下钻/返回后 adcode 变化，需销毁重建）
+   * 省级 depth=1 画市界；市级用 City 图层 depth=1 画区县界
    */
   const buildDistrictLayer = (map, district) => {
     if (disProvinceLayer) {
       map.remove(disProvinceLayer);
       disProvinceLayer = null;
     }
-    disProvinceLayer = new AMap.DistrictLayer.Province({
-      zIndex: 120,
-      adcode: [district.adcode],
-      // 省级视图需要显示市级底色和边界，所以 depth=1；下钻时如果需要展示下一级底色也保持 1；如果是最底层 district，depth=0
-      depth: district.level === "district" ? 0 : 1,
-      styles: {
-        fill: (properties) =>
-          showHeatmap.value
-            ? getColorByAdcode(properties.adcode)
-            : "transparent",
-        "province-stroke": "transparent",
-        "city-stroke":
-          district.level === "province"
-            ? "rgba(102, 204, 255, 0.8)"
-            : "transparent",
-        "county-stroke": "transparent",
-      },
-    });
+    const level = district.level || "province";
+    const adcode = Number(district.adcode) || district.adcode;
+
+    if (level === "city" && AMap.DistrictLayer.City) {
+      disProvinceLayer = new AMap.DistrictLayer.City({
+        zIndex: 120,
+        adcode: [adcode],
+        depth: 1,
+        styles: getLayerStyles(level),
+      });
+    } else {
+      const layerAdcode =
+        level === "city" && areaStack[0]?.adcode
+          ? Number(areaStack[0].adcode)
+          : adcode;
+      disProvinceLayer = new AMap.DistrictLayer.Province({
+        zIndex: 120,
+        adcode: [layerAdcode],
+        depth: level === "province" ? 1 : level === "city" ? 2 : 0,
+        styles: getLayerStyles(level),
+      });
+    }
     map.add(disProvinceLayer);
   };
 
@@ -188,10 +207,8 @@ export const useMap = (containerRef) => {
         subdistrict: 1,
         extensions: "all",
       });
-      console.log(adcode, ds);
 
       ds.search(key, (status, result) => {
-        console.log(status, result);
         //         {
         //     "info": "OK",
         //     "districtList": [
@@ -313,20 +330,17 @@ export const useMap = (containerRef) => {
    * 为可下钻子区域创建透明交互 Polygon（hover 高亮 + 点击下钻），并与标签 hover 联动
    */
   const createInteractivePolygon = (map, sub, textMarker) => {
-    console.log(sub);
-
     if (!sub.boundaries?.length) return;
     const polygon = new AMap.Polygon({
       path: sub.boundaries,
       fillColor: "#4B93E9",
-      fillOpacity: 1,
-      strokeColor: "#66CCFF",
+      fillOpacity: 0.01,
+      strokeColor: SUB_STROKE,
       strokeWeight: 2,
-      // 如果是省级视图，市级描边由 DistrictLayer (city-stroke) 提供，这里的交互多边形描边设为透明，避免重叠发虚
-      strokeOpacity: currentLevelInject?.value === "province" ? 0.01 : 1,
+      strokeOpacity: 1,
       bubble: true,
       cursor: "pointer",
-      zIndex: 225, // 高于卫星图(115)/行政区划图层(120)，低于主边界线(130)
+      zIndex: 225,
       map,
     });
     const hoverOn = () =>
@@ -338,13 +352,12 @@ export const useMap = (containerRef) => {
     const hoverOff = () =>
       polygon.setOptions({
         fillOpacity: 0.01,
-        strokeOpacity: currentLevelInject?.value === "province" ? 0.01 : 1,
+        strokeOpacity: 1,
         strokeWeight: 2,
       });
     polygon.on("mouseover", hoverOn);
     polygon.on("mouseout", hoverOff);
     polygon.on("click", () => drillDown(sub));
-    // 标签联动：hover 标签同样高亮区域
     textMarker.on("mouseover", hoverOn);
     textMarker.on("mouseout", hoverOff);
     interactivePolygons.push(polygon);
@@ -359,6 +372,21 @@ export const useMap = (containerRef) => {
 
     const gen = viewGen;
     const canDrill = district.level !== "district"; // 县级的子区域是乡镇，不再下钻
+    const drawSubBoundary = (bounds) => {
+      bounds.forEach((ring) => {
+        interactivePolygons.push(
+          new AMap.Polyline({
+            path: ring,
+            strokeColor: SUB_STROKE,
+            strokeWeight: 2,
+            strokeOpacity: 1,
+            zIndex: 128,
+            bubble: true,
+            map,
+          }),
+        );
+      });
+    };
     const labelStyle = {
       // 矩形深蓝背景框 + 亮青色边框 + 外发光
       "background-color": "rgba(16, 60, 124, 0.92)",
@@ -376,8 +404,6 @@ export const useMap = (containerRef) => {
         "-1.5px -1.5px 0 #0A2E5F, 1.5px -1.5px 0 #0A2E5F, -1.5px 1.5px 0 #0A2E5F, 1.5px 1.5px 0 #0A2E5F, 0 0 8px rgba(0, 0, 0, 0.9)",
       cursor: canDrill ? "pointer" : "default",
     };
-    console.log(district);
-
     (district.districtList || []).forEach((sub) => {
       if (!sub.center) return;
 
@@ -397,16 +423,16 @@ export const useMap = (containerRef) => {
       if (canDrill) {
         // 标签点击下钻不依赖边界数据，立即可用
         textMarker.on("click", () => drillDown(sub));
-        console.log(sub);
         if (sub.boundaries?.length) {
-          console.log(1);
           createInteractivePolygon(map, sub, textMarker);
+          drawSubBoundary(sub.boundaries);
         } else {
-          // 子级无边界：异步单独查询（串行队列），返回后补建交互区
+          // 子级无边界：异步单独查询（串行队列），返回后补建交互区与描边
           enqueueFetchBoundaries(sub.adcode).then((bounds) => {
             if (gen !== viewGen || !bounds.length) return; // 视图已切换或无边界数据
             sub.boundaries = bounds; // 回填到子区域对象，返回此视图时直接复用
             createInteractivePolygon(map, sub, textMarker);
+            drawSubBoundary(bounds);
           });
         }
       } else {
@@ -707,29 +733,15 @@ export const useMap = (containerRef) => {
   watch(showHeatmap, (newVal) => {
     if (!mapInstance.value || !satelliteLayer || !disProvinceLayer) return;
 
-    const strokes = {
-      "province-stroke": "transparent",
-      "city-stroke":
-        currentLevelInject?.value === "province"
-          ? "rgba(102, 204, 255, 0.8)"
-          : "transparent",
-      "county-stroke": "transparent",
-    };
+    const level = currentLevelInject?.value || "province";
+    const strokes = getLayerStyles(level);
 
     if (newVal) {
-      // 开启热力图：隐藏卫星图，设置行政区颜色填充
       satelliteLayer.hide();
-      disProvinceLayer.setStyles({
-        fill: (properties) => getColorByAdcode(properties.adcode),
-        ...strokes,
-      });
+      disProvinceLayer.setStyles(strokes);
     } else {
-      // 关闭热力图：显示卫星图，行政区内部透明
       satelliteLayer.show();
-      disProvinceLayer.setStyles({
-        fill: "transparent",
-        ...strokes,
-      });
+      disProvinceLayer.setStyles(strokes);
     }
   });
 
