@@ -88,7 +88,7 @@ const genPulseLineData = () => {
   const outPaths = []; // 流出线原始路径（箭头飞行轨迹）
   const scatterFeatures = [];
 
-  Object.entries(cityData).forEach(([adcode, city]) => {
+  Object.entries(cityData).forEach(([adcode, city], index) => {
     // 成都自身只生成中心大呼吸点
     if (adcode === "510100") return;
 
@@ -98,18 +98,21 @@ const genPulseLineData = () => {
         ? Math.min(city.count / MAX_COUNT, 1)
         : +(Math.random() * 0.5 + 0.2).toFixed(2);
 
+    // 动态计算曲率偏移量，使相邻/同方向城市的线条具有不同的弯曲程度，避免重合
+    const arcOffset = 0.08 + (index % 5) * 0.06; // 产生 0.08, 0.14, 0.20, 0.26, 0.32 的曲率差异
+
     // 流入成都
     inFeatures.push({
       type: "Feature",
       geometry: {
         type: "LineString",
-        coordinates: genArcPath(point, chengdu, 0.12),
+        coordinates: genArcPath(point, chengdu, arcOffset),
       },
       properties: { lineWidthRatio: ratio },
     });
 
     // 从成都流出（弧线偏移方向相反，避免与流入线重叠）
-    const outPath = genArcPath(chengdu, point, -0.12);
+    const outPath = genArcPath(chengdu, point, -arcOffset);
     outFeatures.push({
       type: "Feature",
       geometry: {
@@ -157,7 +160,11 @@ export const loadMap = async (key, securityCode) => {
   const AMap = await AMapLoader.load({
     key: key,
     version: "2.0",
-    plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer", "AMap.MoveAnimation"],
+    plugins: [
+      "AMap.DistrictSearch",
+      "AMap.Object3DLayer",
+      "AMap.MoveAnimation",
+    ],
   });
   window.AMap = AMap;
   return AMap;
@@ -387,7 +394,7 @@ export const useMap = (containerRef) => {
             // 错峰出发：按飞行总时长把各货车的出发时间均匀错开
             const flightMs = ARROW_DURATION * (path.length - 1);
             arrowAnimTimers.push(
-              setTimeout(fly, (i * flightMs) / outPaths.length)
+              setTimeout(fly, (i * flightMs) / outPaths.length),
             );
           });
 
@@ -398,9 +405,7 @@ export const useMap = (containerRef) => {
             visible: true,
             zooms: [2, 22],
           });
-          scatterLayer.setSource(
-            new Loca.GeoJSONSource({ data: scatterData })
-          );
+          scatterLayer.setSource(new Loca.GeoJSONSource({ data: scatterData }));
           scatterLayer.setStyle({
             unit: "px",
             size: (_, feature) => {
