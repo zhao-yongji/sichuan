@@ -1,7 +1,10 @@
 <template>
   <div class="production-detail">
     <div class="header">
-      <div class="title">查看更多</div>
+      <div class="title">
+        <div class="title-icon"></div>
+        <span>查看更多</span>
+      </div>
       <div class="close-btn" @click="close"></div>
     </div>
     <div class="content">
@@ -51,12 +54,40 @@ defineProps({
     align-items: center;
 
     .title {
-      font-size: 24px;
-      color: #fff;
-      font-weight: bold;
+      display: flex;
+      align-items: center;
       margin-left: 60px;
-      letter-spacing: 2px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+
+      .title-icon {
+        width: 34px;
+        height: 22px;
+        background: url("@/assets/image/modal/arrow.png") no-repeat center
+          center;
+        background-size: 100% 100%;
+        margin-right: 12px;
+        flex-shrink: 0;
+      }
+
+      span {
+        font-family: "Source Han Sans CN", "Source Han Sans CN";
+        font-weight: bold;
+        font-size: 30px;
+        letter-spacing: 4px;
+        text-shadow: 0px 3px 3px rgba(0, 0, 0, 0.25);
+        text-align: left;
+        font-style: normal;
+        text-transform: none;
+        background: linear-gradient(
+          to bottom,
+          #ffffff 0%,
+          #ffffff 48%,
+          #b8f2ff 63%,
+          #a1eeff 83%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
     }
 
     .close-btn {
