@@ -41,13 +41,6 @@ import VChart from '@/components/VChart.vue'
 
 const emit = defineEmits(['close'])
 
-defineProps({
-  data: {
-    type: Object,
-    default: () => ({})
-  }
-})
-
 function onClose() {
   emit('close')
 }

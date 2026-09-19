@@ -1,18 +1,21 @@
 <template>
   <div class="area-tree">
-    <SectionTitle>区域信息</SectionTitle>
-    <div class="divider"></div>
-    <div class="search-box">
-      <input v-model="keyword" type="text" placeholder="请输入区域信息" />
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none">
-        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
-        <path
-          d="M16.5 16.5L21 21"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-        />
-      </svg>
+    <SectionTitle v-if="showTitle">区域信息</SectionTitle>
+    <div v-if="showTitle" class="divider"></div>
+    <div class="search-row">
+      <div class="search-box">
+        <input v-model="keyword" type="text" placeholder="请输入区域信息" />
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+          <path
+            d="M16.5 16.5L21 21"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+      <button v-if="showRefresh" type="button" class="refresh" @click="onRefresh">刷新</button>
     </div>
     <div class="tree-body">
       <div v-if="loading" class="tree-tip">加载中...</div>
@@ -52,6 +55,17 @@ import {
   currentSelectAreaCodeKey,
   currentSelectAreaCode as exportedAreaCode,
 } from "@/views/home/hooks/userBaseDataHook.js";
+
+defineProps({
+  showTitle: {
+    type: Boolean,
+    default: true
+  },
+  showRefresh: {
+    type: Boolean,
+    default: false
+  }
+})
 
 // 优先注入全局选中区域，取不到时兜底使用模块级 ref
 const areaCodeRef = inject(currentSelectAreaCodeKey, null) ?? exportedAreaCode;
@@ -123,6 +137,11 @@ const onSelect = (node) => {
   selectedAdcode.value = node.adcode;
 };
 
+const onRefresh = () => {
+  keyword.value = "";
+  loadRoot(areaCodeRef?.value || "510000");
+};
+
 /** 按关键字过滤树：命中节点及其祖先链保留 */
 const filteredRoot = computed(() => {
   const kw = keyword.value.trim();
@@ -186,9 +205,17 @@ onMounted(async () => {
     margin: 14px 0 16px;
   }
 
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .search-box {
     height: 40px;
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     padding: 0 12px;
@@ -217,6 +244,18 @@ onMounted(async () => {
       flex-shrink: 0;
       color: rgba(255, 255, 255, 0.65);
     }
+  }
+
+  .refresh {
+    height: 40px;
+    padding: 0 12px;
+    flex-shrink: 0;
+    color: #ffffff;
+    font-size: 14px;
+    background: #1a7de8;
+    border: 1px solid #3aa0ff;
+    border-radius: 4px;
+    cursor: pointer;
   }
 
   .tree-body {

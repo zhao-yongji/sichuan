@@ -121,13 +121,6 @@ import { computed, ref } from 'vue'
 
 const emit = defineEmits(['close'])
 
-defineProps({
-  data: {
-    type: Object,
-    default: () => ({})
-  }
-})
-
 function onClose() {
   emit('close')
 }

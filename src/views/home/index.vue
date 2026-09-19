@@ -67,6 +67,7 @@
         :key="item.key"
         class="nav-item"
         :class="item.key"
+        @click="onNavClick(item)"
       >
         <i class="icon"></i>
         <span>{{ item.label }}</span>
@@ -75,7 +76,10 @@
 
     <Popup v-model="popupVisible">
       <div class="popup-content">
-        <component :is="popupComponents[popupName]" @close="popupVisible = false" />
+        <component
+          :is="popupComponents[popupName]"
+          @close="popupVisible = false"
+        />
       </div>
     </Popup>
   </div>
@@ -94,6 +98,8 @@ import Circulation from './components/circulation.vue'
 import Warning from './components/warning.vue'
 import Price from './components/price.vue'
 import PriceDetail from './components/priceDetail.vue'
+import SlaughterDetail from './components/slaughterDetail.vue'
+import AnalysisDetail from './components/analysisDetail.vue'
 import Popup from '@/components/Popup.vue'
 import Amap from '@/components/amap/index.vue'
 
@@ -143,10 +149,10 @@ function switchAnimal(step) {
 }
 
 const navs = [
-  { key: 'analysis', label: '分析统计' },
+  { key: 'analysis', label: '分析统计', popup: 'analysisPopup' },
   { key: 'epidemic', label: '动物防疫' },
   { key: 'quarantine', label: '动物检疫' },
-  { key: 'slaughter', label: '屠宰监管' }
+  { key: 'slaughter', label: '屠宰监管', popup: 'slaughterPopup' }
 ]
 
 const popupName = ref('')
@@ -154,7 +160,9 @@ const popupVisible = ref(false)
 const popupComponents = {
   productionPopup: ProductionDetail,
   warningPopup: WarningDetail,
-  pricePopup: PriceDetail
+  pricePopup: PriceDetail,
+  slaughterPopup: SlaughterDetail,
+  analysisPopup: AnalysisDetail
 }
 
 function onSearchMore(popup) {
@@ -164,6 +172,11 @@ function onSearchMore(popup) {
   }
   popupName.value = popup
   popupVisible.value = true
+}
+
+function onNavClick(item) {
+  if (!item.popup) return
+  onSearchMore(item.popup)
 }
 </script>
 

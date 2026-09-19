@@ -26,13 +26,6 @@ const emit = defineEmits(["close"]);
 const close = () => {
   emit("close");
 };
-
-defineProps({
-  data: {
-    type: Object,
-    default: () => ({}),
-  },
-});
 </script>
 
 <style scoped lang="scss">
