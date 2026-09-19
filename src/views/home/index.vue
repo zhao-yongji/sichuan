@@ -2,12 +2,20 @@
   <div class="home">
     <aside class="col left">
       <div class="left-top">
-        <BlockPanel title="生产情况" popup="productionPopup" @searchMore="onSearchMore">
+        <BlockPanel
+          title="生产情况"
+          popup="productionPopup"
+          @searchMore="onSearchMore"
+        >
           <Production :data="productionData" />
         </BlockPanel>
       </div>
       <div class="left-bottom">
-        <BlockPanel title="流通情况" popup="circulationPopup" @searchMore="onSearchMore">
+        <BlockPanel
+          title="流通情况"
+          popup="circulationPopup"
+          @searchMore="onSearchMore"
+        >
           <Circulation :data="circulationData" />
         </BlockPanel>
       </div>
@@ -34,12 +42,20 @@
 
     <aside class="col right">
       <div class="right-top">
-        <BlockPanel title="预警情况" popup="warningPopup" @searchMore="onSearchMore">
+        <BlockPanel
+          title="预警情况"
+          popup="warningPopup"
+          @searchMore="onSearchMore"
+        >
           <Warning :data="warningData" />
         </BlockPanel>
       </div>
       <div class="right-bottom">
-        <BlockPanel title="价格情况" popup="pricePopup" @searchMore="onSearchMore">
+        <BlockPanel
+          title="价格情况"
+          popup="pricePopup"
+          @searchMore="onSearchMore"
+        >
           <Price :data="priceData" />
         </BlockPanel>
       </div>
@@ -59,82 +75,83 @@
 
     <Popup v-model="popupVisible">
       <div class="popup-content">
-        <ProductionDetail v-if="popupName === 'productionPopup'" />
+        <ProductionDetail
+          v-if="popupName === 'productionPopup'"
+          @close="popupVisible = false"
+        />
       </div>
     </Popup>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import ScreenPanel from '@/components/ScreenPanel.vue'
-import BlockPanel from '@/components/BlockPanel.vue'
-import Production from './components/production.vue'
-import ProductionDetail from './components/productionDetail.vue'
-import Circulation from './components/circulation.vue'
-import Warning from './components/warning.vue'
-import Price from './components/price.vue'
-import Popup from '@/components/Popup.vue'
-import Amap from '@/components/amap/index.vue'
+import { ref } from "vue";
+import ScreenPanel from "@/components/ScreenPanel.vue";
+import BlockPanel from "@/components/BlockPanel.vue";
+import Production from "./components/production.vue";
+import ProductionDetail from "./components/productionDetail.vue";
+import Circulation from "./components/circulation.vue";
+import Warning from "./components/warning.vue";
+import Price from "./components/price.vue";
+import Popup from "@/components/Popup.vue";
+import Amap from "@/components/amap/index.vue";
 
 const productionData = {
   farmTotal: 5324,
   farmLevels: [
-    { label: '2000头以上养殖场数', value: 3000 },
-    { label: '500-2000头养殖场数', value: 2324 }
+    { label: "2000头以上养殖场数", value: 3000 },
+    { label: "500-2000头养殖场数", value: 2324 },
   ],
   stock: 1536,
-  outTotal: 800
-}
+  outTotal: 800,
+};
 
 const circulationData = {
   yearIn: 1536,
   yesterdayIn: 1536,
   yearOut: 1536,
-  yesterdayOut: 1536
-}
+  yesterdayOut: 1536,
+};
 
 const warningData = {
   stockAbnormal: 100,
-  outAbnormal: 80
-}
+  outAbnormal: 80,
+};
 
 const priceData = {
   pigPrice: 18.06,
   pigProfit: 8.06,
   porkMarket: 18.0,
   porkCarcass: 18.0,
-  porkProfit: 15.06
-}
+  porkProfit: 15.06,
+};
 
-const animalKey = ref('pig')
+const animalKey = ref("pig");
 const animals = [
-  { key: 'pig', label: '猪' },
-  { key: 'cattle', label: '牛' },
-  { key: 'sheep', label: '羊' }
-]
+  { key: "pig", label: "猪" },
+  { key: "cattle", label: "牛" },
+  { key: "sheep", label: "羊" },
+];
 
 function switchAnimal(step) {
-  const index = animals.findIndex((item) => item.key === animalKey.value)
-  const next = (index + step + animals.length) % animals.length
-  animalKey.value = animals[next].key
+  const index = animals.findIndex((item) => item.key === animalKey.value);
+  const next = (index + step + animals.length) % animals.length;
+  animalKey.value = animals[next].key;
 }
 
 const navs = [
-  { key: 'analysis', label: '分析统计' },
-  { key: 'epidemic', label: '动物防疫' },
-  { key: 'quarantine', label: '动物检疫' },
-  { key: 'slaughter', label: '屠宰监管' }
-]
+  { key: "analysis", label: "分析统计" },
+  { key: "epidemic", label: "动物防疫" },
+  { key: "quarantine", label: "动物检疫" },
+  { key: "slaughter", label: "屠宰监管" },
+];
 
-const popupName = ref('')
-const popupVisible = ref(false)
+const popupName = ref("");
+const popupVisible = ref(false);
 function onSearchMore(popup) {
-  popupName.value = popup
-  popupVisible.value = true
+  popupName.value = popup;
+  popupVisible.value = true;
 }
-
-
 </script>
 
 <style scoped lang="scss">
@@ -150,7 +167,7 @@ function onSearchMore(popup) {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    .left-top{    
+    .left-top {
       width: 100%;
       height: 48%;
     }
@@ -198,11 +215,11 @@ function onSearchMore(popup) {
         background-size: 100% 100%;
 
         &.prev {
-          background-image: url('@/assets/image/右.png');
+          background-image: url("@/assets/image/右.png");
         }
 
         &.next {
-          background-image: url('@/assets/image/左.png');
+          background-image: url("@/assets/image/左.png");
         }
       }
 
@@ -212,7 +229,7 @@ function onSearchMore(popup) {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: url('@/assets/image/常态.png') no-repeat;
+        background: url("@/assets/image/常态.png") no-repeat;
         background-size: 100% 100%;
         color: #d7f3ff;
         font-size: 18px;
@@ -222,7 +239,7 @@ function onSearchMore(popup) {
 
         &.is-active {
           width: 128px;
-          background-image: url('@/assets/image/选中.png');
+          background-image: url("@/assets/image/选中.png");
           color: #fff;
         }
       }
@@ -244,7 +261,7 @@ function onSearchMore(popup) {
       align-items: center;
       justify-content: center;
       gap: 8px;
-      background: url('@/assets/image/按钮2.png') no-repeat;
+      background: url("@/assets/image/按钮2.png") no-repeat;
       background-size: 100% 100%;
       color: #d7f3ff;
       font-size: 18px;
@@ -261,19 +278,19 @@ function onSearchMore(popup) {
       }
 
       &.analysis .icon {
-        background-image: url('@/assets/image/分析统计.png');
+        background-image: url("@/assets/image/分析统计.png");
       }
 
       &.epidemic .icon {
-        background-image: url('@/assets/image/动物防疫.png');
+        background-image: url("@/assets/image/动物防疫.png");
       }
 
       &.quarantine .icon {
-        background-image: url('@/assets/image/动物检疫.png');
+        background-image: url("@/assets/image/动物检疫.png");
       }
 
       &.slaughter .icon {
-        background-image: url('@/assets/image/屠宰监管.png');
+        background-image: url("@/assets/image/屠宰监管.png");
       }
     }
   }
@@ -302,6 +319,5 @@ function onSearchMore(popup) {
 }
 
 .popup-content {
-  
 }
 </style>
