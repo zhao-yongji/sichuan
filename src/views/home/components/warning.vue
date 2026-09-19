@@ -3,14 +3,14 @@
     <div class="visual">
       <i class="chart"></i>
       <div class="stat stock">
-        <p class="label">今日存栏异常<br />养殖场数</p>
+        <p class="label">存栏异常<br />养殖场数</p>
         <p class="num">
           <strong>{{ data.stockAbnormal }}</strong>
           <span>个</span>
         </p>
       </div>
       <div class="stat out">
-        <p class="label">今日出栏异常<br />养殖场数</p>
+        <p class="label">出栏异常<br />养殖场数</p>
         <p class="num">
           <strong>{{ data.outAbnormal }}</strong>
           <span>个</span>
