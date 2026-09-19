@@ -349,30 +349,31 @@ export const useMap = (containerRef) => {
           outLineLayer.setSource(new Loca.GeoJSONSource({ data: outData }));
           loca.add(outLineLayer);
 
-          // 流出方向箭头：橙色实心 + 白描边，沿弧线循环飞行，方向自动对齐线的行进方向
-          const outArrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3 L27 26 L16 20 L5 26 Z" fill="#FF6A00" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/></svg>`;
-          const outArrowIcon = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(outArrowSvg)}`;
+          // 流出方向货车图标：橙色车身 + 白描边，沿弧线循环飞行，方向自动对齐线的行进方向
+          // 注意：moveAlong 的 autoRotation 以图标"朝上(正北)"为基准，侧视朝右的货车需先 rotate(-90) 转为朝上
+          const outTruckSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><g transform="rotate(-90 16 16)"><rect x="2" y="9" width="16" height="12" rx="1.5" fill="#FF6A00" stroke="#FFFFFF" stroke-width="1.5"/><path d="M18 12 h6.5 l3.5 4 v5 h-10 z" fill="#FFA040" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><rect x="20.5" y="13.5" width="4.5" height="3.5" rx="0.8" fill="#E8F4FF" stroke="#FFFFFF" stroke-width="1"/><circle cx="8" cy="23" r="3" fill="#2B2B2B" stroke="#FFFFFF" stroke-width="1.5"/><circle cx="22" cy="23" r="3" fill="#2B2B2B" stroke="#FFFFFF" stroke-width="1.5"/></g></svg>`;
+          const outTruckIcon = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(outTruckSvg)}`;
           const ARROW_DURATION = 500; // 与流出脉冲 duration 一致，飞行速度与脉冲同步
           outPaths.forEach((path, i) => {
-            const arrowMarker = new AMap.Marker({
+            const truckMarker = new AMap.Marker({
               position: path[0],
               anchor: "center",
               zIndex: 160,
               cursor: "default",
-              content: `<img src="${outArrowIcon}" style="width:26px;height:26px;display:block;" />`,
+              content: `<img src="${outTruckIcon}" style="width:30px;height:30px;display:block;" />`,
             });
-            arrowMarker.setMap(map);
-            arrowMarkers.push(arrowMarker);
+            truckMarker.setMap(map);
+            arrowMarkers.push(truckMarker);
 
             // 飞到终点后重新出发，形成循环
             const fly = () => {
-              arrowMarker.moveAlong(path, {
+              truckMarker.moveAlong(path, {
                 duration: ARROW_DURATION,
-                autoRotation: true, // 箭头自动旋转至路径行进方向（SVG 默认朝上/正北）
+                autoRotation: true, // 货车自动旋转至路径行进方向（SVG 已转为默认朝上/正北）
               });
             };
-            arrowMarker.on("movealong", fly);
-            // 错峰出发，让各条线上的箭头位置分布更自然
+            truckMarker.on("movealong", fly);
+            // 错峰出发，让各条线上的货车位置分布更自然
             arrowAnimTimers.push(
               setTimeout(fly, (i * ARROW_DURATION) / outPaths.length)
             );
