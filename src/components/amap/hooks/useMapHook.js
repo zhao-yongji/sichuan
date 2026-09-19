@@ -1,4 +1,4 @@
-import { shallowRef, onMounted, onUnmounted } from "vue";
+import { shallowRef, ref, watch, onMounted, onUnmounted } from "vue";
 import AMapLoader from "@amap/amap-jsapi-loader";
 
 export const DEFAULT_MAP_KEY = "496fae1930a5be230b42266fc3524b1d";
@@ -194,10 +194,14 @@ export const loadLoca = (key) => {
  */
 export const useMap = (containerRef) => {
   const mapInstance = shallowRef(null);
+  const showHeatmap = ref(false); // 默认关闭热力图（显示卫星图）
+
   let textMarkers = [];
   let arrowMarkers = []; // 流出方向箭头 Marker（DOM 渲染，始终位于 Loca canvas 之上）
   let arrowAnimTimers = []; // 箭头错峰出发的定时器
   let locaContainer = null; // Loca 容器（脉冲线、呼吸点图层）
+  let satelliteLayer = null; // 卫星图层
+  let disProvinceLayer = null; // 行政区划图层（带颜色填充）
 
   const initMap = async () => {
     if (!containerRef.value) return;
@@ -240,21 +244,32 @@ export const useMap = (containerRef) => {
 
           mapInstance.value = map;
 
+          // 0. 添加卫星图层 (受 mask 限制，只显示四川省内)
+          // zIndex 需高于阴影多边形(110)、低于行政区划图层(120)，否则会被不透明阴影遮住
+          satelliteLayer = new AMap.TileLayer.Satellite({
+            zIndex: 115,
+            visible: !showHeatmap.value, // 默认显示卫星图
+          });
+          map.add(satelliteLayer);
+
           // 1. 添加市级行政区划图层，用于绘制地市边界和填充颜色
-          const disProvince = new AMap.DistrictLayer.Province({
+          disProvinceLayer = new AMap.DistrictLayer.Province({
             zIndex: 120,
             adcode: ["510000"],
             depth: 1,
             styles: {
               fill: (properties) => {
-                return getColorByAdcode(properties.adcode);
+                // 如果开启了热力图，返回计算颜色；否则返回透明（露出卫星图）
+                return showHeatmap.value
+                  ? getColorByAdcode(properties.adcode)
+                  : "transparent";
               },
               "province-stroke": "#ffffff",
               "city-stroke": "rgba(255, 255, 255, 0.6)",
               "county-stroke": "transparent",
             },
           });
-          map.add(disProvince);
+          map.add(disProvinceLayer);
 
           // 2. 绘制多层阴影和外边界以产生 3D 立体感
           boundaries.forEach((bounds) => {
@@ -436,6 +451,31 @@ export const useMap = (containerRef) => {
     initMap();
   });
 
+  // 监听 showHeatmap 变化，动态切换图层
+  watch(showHeatmap, (newVal) => {
+    if (!mapInstance.value || !satelliteLayer || !disProvinceLayer) return;
+
+    if (newVal) {
+      // 开启热力图：隐藏卫星图，设置行政区颜色填充
+      satelliteLayer.hide();
+      disProvinceLayer.setStyles({
+        fill: (properties) => getColorByAdcode(properties.adcode),
+        "province-stroke": "#ffffff",
+        "city-stroke": "rgba(255, 255, 255, 0.6)",
+        "county-stroke": "transparent",
+      });
+    } else {
+      // 关闭热力图：显示卫星图，行政区内部透明
+      satelliteLayer.show();
+      disProvinceLayer.setStyles({
+        fill: "transparent",
+        "province-stroke": "#ffffff",
+        "city-stroke": "rgba(255, 255, 255, 0.6)",
+        "county-stroke": "transparent",
+      });
+    }
+  });
+
   onUnmounted(() => {
     // 停止箭头飞行并清理 Marker 与错峰定时器
     arrowAnimTimers.forEach((timer) => clearTimeout(timer));
@@ -464,5 +504,6 @@ export const useMap = (containerRef) => {
 
   return {
     map: mapInstance,
+    showHeatmap,
   };
 };
