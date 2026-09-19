@@ -52,8 +52,8 @@
             </div>
           </a-form-item>
         </a-form>
-        <div class="remember-style">
-          <a-checkbox v-model:checked="rememberPsd">记住密码</a-checkbox>
+        <div class="agreement">
+          已阅读并同意<span class="link">《用户服务协议》</span>及<span class="link">《隐私政策》</span>
         </div>
         <div class="login-btn" @click="handleLogin">
           <span>{{ loading ? '登录中...' : '登 录' }}</span>
@@ -73,8 +73,7 @@ import {
   Form as AForm,
   FormItem as AFormItem,
   Input as AInput,
-  InputPassword as AInputPassword,
-  Checkbox as ACheckbox
+  InputPassword as AInputPassword
 } from 'ant-design-vue'
 import { getCodeImgApi } from '@/api/modules/user'
 import headerBg from '@/assets/image/顶部 1.png'
@@ -92,7 +91,6 @@ const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 
 const loginFormRef = ref(null)
 const loading = ref(false)
-const rememberPsd = ref(false)
 const codeImg = ref('')
 
 /** 自定义密码可见性图标（用设计稿 icon 替换默认眼睛） */
@@ -138,14 +136,6 @@ const handleLogin = () => {
           ...formState,
           verifyCodeType: 'L'
         })
-        // 记住密码
-        if (rememberPsd.value) {
-          localStorage.setItem('rememberedUsername', formState.username)
-          localStorage.setItem('rememberedPassword', formState.password)
-        } else {
-          localStorage.removeItem('rememberedUsername')
-          localStorage.removeItem('rememberedPassword')
-        }
         const redirect = route.query.redirect || '/home'
         router.replace(redirect)
       } catch (err) {
@@ -158,19 +148,7 @@ const handleLogin = () => {
     .catch(() => {})
 }
 
-/** 回填记住的账号密码 */
-const initFormData = () => {
-  const savedUsername = localStorage.getItem('rememberedUsername')
-  const savedPassword = localStorage.getItem('rememberedPassword')
-  if (savedUsername && savedPassword) {
-    formState.username = savedUsername
-    formState.password = savedPassword
-    rememberPsd.value = true
-  }
-}
-
 onMounted(() => {
-  initFormData()
   getCodeImg()
 })
 </script>
@@ -307,26 +285,14 @@ onMounted(() => {
     }
   }
 
-  .remember-style {
-    display: flex;
-    align-items: center;
+  .agreement {
     margin: -4px 0 4px;
+    font-size: 14px;
+    color: #ffffff;
 
-    :deep(.ant-checkbox-inner) {
-      width: 14px;
-      height: 14px;
-      background-color: rgba(0, 145, 255, 0.12);
-      border-color: rgba(14, 190, 255, 0.7);
-    }
-
-    :deep(.ant-checkbox-checked .ant-checkbox-inner) {
-      background-color: #0e9fff;
-      border-color: #0e9fff;
-    }
-
-    :deep(.ant-checkbox-wrapper) {
-      color: rgba(255, 255, 255, 0.65);
-      font-size: 14px;
+    .link {
+      color: #38c6ff;
+      cursor: pointer;
     }
   }
 
