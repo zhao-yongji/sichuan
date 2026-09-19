@@ -203,11 +203,11 @@ function onReset() {
   position: relative;
   .closePopup {
     position: absolute;
-    top: 4px;
+    top: 7px;
     right: 0;
     cursor: pointer;
-    width: 34px;
-    height: 33px;
+    width: 32px;
+    height: 31px;
     background: url('@/assets/image/alertPopup.png') no-repeat;
     background-size: 100% 100%;
   }
