@@ -85,6 +85,7 @@ const genPulseLineData = () => {
   const MAX_COUNT = 543090; // 达州（数据中的最大值）
   const inFeatures = [];
   const outFeatures = [];
+  const outPaths = []; // 流出线原始路径（箭头飞行轨迹）
   const scatterFeatures = [];
 
   Object.entries(cityData).forEach(([adcode, city]) => {
@@ -108,14 +109,17 @@ const genPulseLineData = () => {
     });
 
     // 从成都流出（弧线偏移方向相反，避免与流入线重叠）
+    const outPath = genArcPath(chengdu, point, -0.12);
     outFeatures.push({
       type: "Feature",
       geometry: {
         type: "LineString",
-        coordinates: genArcPath(chengdu, point, -0.12),
+        coordinates: outPath,
       },
       properties: { lineWidthRatio: ratio },
     });
+    // 保留原始路径，供箭头沿线飞行使用
+    outPaths.push(outPath);
 
     // 各市州呼吸点
     scatterFeatures.push({
@@ -135,6 +139,7 @@ const genPulseLineData = () => {
   return {
     inData: { type: "FeatureCollection", features: inFeatures },
     outData: { type: "FeatureCollection", features: outFeatures },
+    outPaths,
     scatterData: { type: "FeatureCollection", features: scatterFeatures },
   };
 };
@@ -152,7 +157,7 @@ export const loadMap = async (key, securityCode) => {
   const AMap = await AMapLoader.load({
     key: key,
     version: "2.0",
-    plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer"],
+    plugins: ["AMap.DistrictSearch", "AMap.Object3DLayer", "AMap.MoveAnimation"],
   });
   window.AMap = AMap;
   return AMap;
@@ -183,6 +188,8 @@ export const loadLoca = (key) => {
 export const useMap = (containerRef) => {
   const mapInstance = shallowRef(null);
   let textMarkers = [];
+  let arrowMarkers = []; // 流出方向箭头 Marker（DOM 渲染，始终位于 Loca canvas 之上）
+  let arrowAnimTimers = []; // 箭头错峰出发的定时器
   let locaContainer = null; // Loca 容器（脉冲线、呼吸点图层）
 
   const initMap = async () => {
@@ -279,24 +286,39 @@ export const useMap = (containerRef) => {
             });
           });
 
-          // 3. 添加城市名称和数值标签
+          // 3. 添加城市名称和数值标签（大字号 + 矩形蓝底框 + 文字描边，大屏远距离可读）
           Object.values(cityData).forEach((city) => {
-            const text =
-              city.count > 0 ? `${city.name} ${city.count}` : city.name;
+            const text = city.name;
             const textMarker = new AMap.Text({
               text: text,
               position: [city.lng, city.lat],
               anchor: "center",
               zIndex: 150,
               style: {
-                "background-color": "transparent",
-                "border-width": 0,
-                color: "#ffffff",
-                "font-size": "12px",
-                "font-weight": "normal",
-                "text-shadow": "0 0 2px rgba(0,0,0,0.8)",
+                // 矩形深蓝背景框 + 亮青色边框 + 外发光
+                "background-color": "rgba(16, 60, 124, 0.92)",
+                border: "2px solid rgba(102, 204, 255, 0.95)",
+                padding: "6px 14px",
+                "box-shadow":
+                  "0 2px 8px rgba(0, 0, 0, 0.45), 0 0 12px rgba(56, 162, 255, 0.55)",
+                color: "#FFFFFF",
+                "font-size": "18px",
+                "font-weight": "bold",
+                // 多重 text-shadow 模拟深蓝描边并叠加外发光，保证远距离可辨识
+                "text-shadow":
+                  "-1.5px -1.5px 0 #0A2E5F, 1.5px -1.5px 0 #0A2E5F, -1.5px 1.5px 0 #0A2E5F, 1.5px 1.5px 0 #0A2E5F, 0 0 8px rgba(0, 0, 0, 0.9)",
+                cursor: "pointer",
               },
             });
+
+            // hover 时抬高 zIndex，保证该标签显示在最前，不被其他标签遮挡
+            textMarker.on("mouseover", () => {
+              textMarker.setzIndex(999);
+            });
+            textMarker.on("mouseout", () => {
+              textMarker.setzIndex(150);
+            });
+
             textMarker.setMap(map);
             textMarkers.push(textMarker);
           });
@@ -305,26 +327,7 @@ export const useMap = (containerRef) => {
           const loca = new Loca.Container({ map });
           locaContainer = loca;
 
-          const { inData, outData, scatterData } = genPulseLineData();
-
-          // 流入成都方向的线（浅黄绿脉冲头 + 青色拖尾）
-          const inLineLayer = new Loca.PulseLineLayer({
-            zIndex: 141,
-            opacity: 1,
-            visible: true,
-            zooms: [2, 22],
-          });
-          inLineLayer.setStyle({
-            altitude: 0,
-            lineWidth: (_, feature) =>
-              feature.properties.lineWidthRatio * 4 + 1,
-            headColor: "#ECFFB1",
-            trailColor: "rgba(20,105,104, 0.2)",
-            interval: 0.5,
-            duration: 2000,
-          });
-          inLineLayer.setSource(new Loca.GeoJSONSource({ data: inData }));
-          loca.add(inLineLayer);
+          const { inData, outData, outPaths, scatterData } = genPulseLineData();
 
           // 从成都流出方向的线（橙色脉冲头，脉冲间隔更小、节奏更慢）
           const outLineLayer = new Loca.PulseLineLayer({
@@ -337,13 +340,43 @@ export const useMap = (containerRef) => {
             altitude: 0,
             lineWidth: (_, feature) =>
               feature.properties.lineWidthRatio * 1 + 3,
-            headColor: "#FFB20D",
-            trailColor: "rgba(255,178,6, 0.2)",
+            // 高饱和橙：头部亮橙、拖尾提高透明度，远距离更醒目
+            headColor: "#FF6A00",
+            trailColor: "rgba(255,106,0, 0.45)",
             interval: 0.25,
             duration: 5000,
           });
           outLineLayer.setSource(new Loca.GeoJSONSource({ data: outData }));
           loca.add(outLineLayer);
+
+          // 流出方向箭头：橙色实心 + 白描边，沿弧线循环飞行，方向自动对齐线的行进方向
+          const outArrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3 L27 26 L16 20 L5 26 Z" fill="#FF6A00" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/></svg>`;
+          const outArrowIcon = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(outArrowSvg)}`;
+          const ARROW_DURATION = 500; // 与流出脉冲 duration 一致，飞行速度与脉冲同步
+          outPaths.forEach((path, i) => {
+            const arrowMarker = new AMap.Marker({
+              position: path[0],
+              anchor: "center",
+              zIndex: 160,
+              cursor: "default",
+              content: `<img src="${outArrowIcon}" style="width:26px;height:26px;display:block;" />`,
+            });
+            arrowMarker.setMap(map);
+            arrowMarkers.push(arrowMarker);
+
+            // 飞到终点后重新出发，形成循环
+            const fly = () => {
+              arrowMarker.moveAlong(path, {
+                duration: ARROW_DURATION,
+                autoRotation: true, // 箭头自动旋转至路径行进方向（SVG 默认朝上/正北）
+              });
+            };
+            arrowMarker.on("movealong", fly);
+            // 错峰出发，让各条线上的箭头位置分布更自然
+            arrowAnimTimers.push(
+              setTimeout(fly, (i * ARROW_DURATION) / outPaths.length)
+            );
+          });
 
           // 呼吸点层（各市州 + 成都中心，尺寸随 lineWidthRatio 变化）
           const scatterLayer = new Loca.ScatterLayer({
@@ -386,6 +419,15 @@ export const useMap = (containerRef) => {
   });
 
   onUnmounted(() => {
+    // 停止箭头飞行并清理 Marker 与错峰定时器
+    arrowAnimTimers.forEach((timer) => clearTimeout(timer));
+    arrowAnimTimers = [];
+    arrowMarkers.forEach((marker) => {
+      marker.stopMove();
+      marker.setMap(null);
+    });
+    arrowMarkers = [];
+
     // 销毁标签
     textMarkers.forEach((marker) => marker.setMap(null));
     textMarkers = [];
