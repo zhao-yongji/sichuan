@@ -2,12 +2,12 @@
   <div class="home">
     <aside class="col left">
       <div class="left-top">
-        <BlockPanel title="生产情况" url="/production">
+        <BlockPanel title="生产情况" popup="productionPopup" @searchMore="onSearchMore">
           <Production :data="productionData" />
         </BlockPanel>
       </div>
       <div class="left-bottom">
-        <BlockPanel title="流通情况" url="/circulation">
+        <BlockPanel title="流通情况" popup="circulationPopup" @searchMore="onSearchMore">
           <Circulation :data="circulationData" />
         </BlockPanel>
       </div>
@@ -34,12 +34,12 @@
 
     <aside class="col right">
       <div class="right-top">
-        <BlockPanel title="预警情况" url="/warning">
+        <BlockPanel title="预警情况" popup="warningPopup" @searchMore="onSearchMore">
           <Warning :data="warningData" />
         </BlockPanel>
       </div>
       <div class="right-bottom">
-        <BlockPanel title="价格情况" url="/price">
+        <BlockPanel title="价格情况" popup="pricePopup" @searchMore="onSearchMore">
           <Price :data="priceData" />
         </BlockPanel>
       </div>
@@ -56,6 +56,12 @@
         <span>{{ item.label }}</span>
       </div>
     </nav>
+
+    <Popup v-model="popupVisible">
+      <div class="popup-content">
+        <ProductionDetail v-if="popupName === 'productionPopup'" />
+      </div>
+    </Popup>
   </div>
 </template>
 
@@ -64,9 +70,11 @@ import { ref } from 'vue'
 import ScreenPanel from '@/components/ScreenPanel.vue'
 import BlockPanel from '@/components/BlockPanel.vue'
 import Production from './components/production.vue'
+import ProductionDetail from './components/productionDetail.vue'
 import Circulation from './components/circulation.vue'
 import Warning from './components/warning.vue'
 import Price from './components/price.vue'
+import Popup from '@/components/Popup.vue'
 import Amap from '@/components/amap/index.vue'
 
 const productionData = {
@@ -118,6 +126,15 @@ const navs = [
   { key: 'quarantine', label: '动物检疫' },
   { key: 'slaughter', label: '屠宰监管' }
 ]
+
+const popupName = ref('')
+const popupVisible = ref(false)
+function onSearchMore(popup) {
+  popupName.value = popup
+  popupVisible.value = true
+}
+
+
 </script>
 
 <style scoped lang="scss">
@@ -282,5 +299,9 @@ const navs = [
   color: #8fbfa8;
   font-size: 20px;
   letter-spacing: 4px;
+}
+
+.popup-content {
+  
 }
 </style>
