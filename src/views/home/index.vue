@@ -86,6 +86,7 @@
 
 <script setup>
 import { ref } from "vue";
+import { useBaseDataHook } from "./hooks/userBaseDataHook.js";
 import ScreenPanel from "@/components/ScreenPanel.vue";
 import BlockPanel from "@/components/BlockPanel.vue";
 import Production from "./components/production.vue";
@@ -95,6 +96,9 @@ import Warning from "./components/warning.vue";
 import Price from "./components/price.vue";
 import Popup from "@/components/Popup.vue";
 import Amap from "@/components/amap/index.vue";
+
+// 初始化基础数据共享 (provide)
+useBaseDataHook();
 
 const productionData = {
   farmTotal: 5324,

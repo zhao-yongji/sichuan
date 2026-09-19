@@ -1,159 +1,16 @@
-import { shallowRef, ref, watch, onMounted, onUnmounted } from "vue";
+import { shallowRef, ref, watch, onMounted, onUnmounted, inject } from "vue";
 import AMapLoader from "@amap/amap-jsapi-loader";
-
-export const DEFAULT_MAP_KEY = "496fae1930a5be230b42266fc3524b1d";
-export const DEFAULT_MAP_SECURITY_KEY = "e47c11028b89174d69b7f5792d85849f";
-
-// 城市数据及颜色映射
-const cityData = {
-  510100: { name: "成都市", count: 0, lng: 104.065735, lat: 30.659462 },
-  510700: { name: "绵阳市", count: 0, lng: 104.679642, lat: 31.467975 },
-  510600: { name: "德阳市", count: 0, lng: 104.398127, lat: 31.127901 },
-  510500: { name: "泸州市", count: 348983, lng: 105.443432, lat: 28.871806 },
-  511500: { name: "宜宾市", count: 0, lng: 104.641715, lat: 28.751312 },
-  511100: { name: "乐山市", count: 0, lng: 103.767263, lat: 29.552563 },
-  511300: { name: "南充市", count: 310641, lng: 106.087005, lat: 30.793128 },
-  511700: { name: "达州市", count: 543090, lng: 107.468363, lat: 31.209494 },
-  511800: { name: "雅安市", count: 11270, lng: 103.045798, lat: 29.986323 },
-  510800: { name: "广元市", count: 0, lng: 105.843432, lat: 32.435372 },
-  510900: { name: "遂宁市", count: 0, lng: 105.573514, lat: 30.515384 },
-  511000: { name: "内江市", count: 157201, lng: 105.058588, lat: 29.580228 },
-  511600: { name: "广安市", count: 22409, lng: 106.633343, lat: 30.456476 },
-  511900: { name: "巴中市", count: 0, lng: 106.747614, lat: 31.869098 },
-  511400: { name: "眉山市", count: 0, lng: 103.832645, lat: 30.04834 },
-  512000: { name: "资阳市", count: 0, lng: 104.627936, lat: 30.128194 },
-  510300: { name: "自贡市", count: 0, lng: 104.776116, lat: 29.339243 },
-  510400: { name: "攀枝花市", count: 0, lng: 101.718637, lat: 26.582347 },
-  513200: {
-    name: "阿坝藏族羌族自治州",
-    count: 26897,
-    lng: 102.221374,
-    lat: 31.899792,
-  },
-  513300: {
-    name: "甘孜藏族自治州",
-    count: 14311,
-    lng: 101.963811,
-    lat: 30.049522,
-  },
-  513400: {
-    name: "凉山彝族自治州",
-    count: 30202,
-    lng: 102.267306,
-    lat: 27.88174,
-  },
-};
-
-// 下钻后的子区域（区县/乡镇）无真实业务数据，按 adcode 生成稳定的伪随机数量，保证热力图颜色不闪烁
-const mockCountCache = {};
-const getCountByAdcode = (adcode) => {
-  const data = cityData[adcode];
-  if (data) return data.count;
-  if (!(adcode in mockCountCache)) {
-    mockCountCache[adcode] = Math.floor(Math.random() * 540000);
-  }
-  return mockCountCache[adcode];
-};
-
-const getColorByAdcode = (adcode) => {
-  const count = getCountByAdcode(adcode);
-  if (count >= 300000) return "#4B93E9"; // 高 (深蓝)
-  if (count >= 30000) return "#78ADE8"; // 中 (中蓝)
-  if (count > 0) return "#99C4EC"; // 低 (浅蓝)
-  return "#C1DEF7"; // 无数据 (最浅蓝)
-};
-
-/**
- * 生成两点之间的弧线路径（二次贝塞尔曲线采样，视觉上比直线更柔和）
- */
-const genArcPath = (start, end, ratio = 0.15) => {
-  const dx = end[0] - start[0];
-  const dy = end[1] - start[1];
-  // 控制点：线段中点沿垂直方向偏移
-  const ctrlLng = (start[0] + end[0]) / 2 - dy * ratio;
-  const ctrlLat = (start[1] + end[1]) / 2 + dx * ratio;
-
-  const points = [];
-  for (let t = 0; t <= 1.0001; t += 0.05) {
-    const mt = 1 - t;
-    points.push([
-      mt * mt * start[0] + 2 * mt * t * ctrlLng + t * t * end[0],
-      mt * mt * start[1] + 2 * mt * t * ctrlLat + t * t * end[1],
-    ]);
-  }
-  return points;
-};
-
-/**
- * 生成脉冲线假数据：成都 <-> 各市州（流入/流出双向）+ 呼吸点
- * lineWidthRatio 按城市 count 归一化（无数据则随机），控制线宽与呼吸点大小
- */
-const genPulseLineData = () => {
-  const chengdu = [cityData[510100].lng, cityData[510100].lat];
-  const MAX_COUNT = 543090; // 达州（数据中的最大值）
-  const inFeatures = [];
-  const outFeatures = [];
-  const outPaths = []; // 流出线原始路径（箭头飞行轨迹）
-  const scatterFeatures = [];
-
-  Object.entries(cityData).forEach(([adcode, city], index) => {
-    // 成都自身只生成中心大呼吸点
-    if (adcode === "510100") return;
-
-    const point = [city.lng, city.lat];
-    const ratio =
-      city.count > 0
-        ? Math.min(city.count / MAX_COUNT, 1)
-        : +(Math.random() * 0.5 + 0.2).toFixed(2);
-
-    // 动态计算曲率偏移量，使相邻/同方向城市的线条具有不同的弯曲程度，避免重合
-    const arcOffset = 0.08 + (index % 5) * 0.06; // 产生 0.08, 0.14, 0.20, 0.26, 0.32 的曲率差异
-
-    // 流入成都
-    inFeatures.push({
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: genArcPath(point, chengdu, arcOffset),
-      },
-      properties: { lineWidthRatio: ratio },
-    });
-
-    // 从成都流出（弧线偏移方向相反，避免与流入线重叠）
-    const outPath = genArcPath(chengdu, point, -arcOffset);
-    outFeatures.push({
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: outPath,
-      },
-      properties: { lineWidthRatio: ratio },
-    });
-    // 保留原始路径，供箭头沿线飞行使用
-    outPaths.push(outPath);
-
-    // 各市州呼吸点
-    scatterFeatures.push({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: point },
-      properties: { lineWidthRatio: ratio },
-    });
-  });
-
-  // 成都中心的大呼吸点
-  scatterFeatures.push({
-    type: "Feature",
-    geometry: { type: "Point", coordinates: chengdu },
-    properties: { lineWidthRatio: 1 },
-  });
-
-  return {
-    inData: { type: "FeatureCollection", features: inFeatures },
-    outData: { type: "FeatureCollection", features: outFeatures },
-    outPaths,
-    scatterData: { type: "FeatureCollection", features: scatterFeatures },
-  };
-};
+import {
+  currentSelectAreaCodeKey,
+  currentLevelKey,
+  currentSelectPlaceNameKey,
+} from "@/views/home/hooks/userBaseDataHook.js";
+import {
+  DEFAULT_MAP_KEY,
+  DEFAULT_MAP_SECURITY_KEY,
+  getColorByAdcode,
+  genPulseLineData,
+} from "./mapUtils";
 
 /**
  * 加载高德地图 SDK
@@ -203,7 +60,9 @@ export const loadLoca = (key) => {
 export const useMap = (containerRef) => {
   const mapInstance = shallowRef(null);
   const showHeatmap = ref(false); // 默认关闭热力图（显示卫星图）
-  const currentLevel = ref("province"); // 当前层级：province(省) | city(市) | district(县)
+  const currentSelectAreaCode = inject(currentSelectAreaCodeKey);
+  const currentLevelInject = inject(currentLevelKey);
+  const currentSelectPlaceName = inject(currentSelectPlaceNameKey);
 
   let AMap = null; // 高德 SDK 命名空间（initMap 加载后供下钻/渲染等闭包使用）
 
@@ -290,20 +149,19 @@ export const useMap = (containerRef) => {
     disProvinceLayer = new AMap.DistrictLayer.Province({
       zIndex: 120,
       adcode: [district.adcode],
-      // DistrictLayer 仅支持省/市/县级；县级视图不再下钻乡镇，depth 0 只渲染自身
+      // 省级视图需要显示市级底色和边界，所以 depth=1；下钻时如果需要展示下一级底色也保持 1；如果是最底层 district，depth=0
       depth: district.level === "district" ? 0 : 1,
       styles: {
         fill: (properties) =>
           showHeatmap.value
             ? getColorByAdcode(properties.adcode)
             : "transparent",
-        "province-stroke": "#ffffff",
-        "city-stroke": "rgba(255, 255, 255, 0.6)",
-        // 市级视图需要显示区县边界；省级视图保持县界透明
-        "county-stroke":
+        "province-stroke": "transparent",
+        "city-stroke":
           district.level === "province"
-            ? "transparent"
-            : "rgba(255, 255, 255, 0.6)",
+            ? "rgba(102, 204, 255, 0.8)"
+            : "transparent",
+        "county-stroke": "transparent",
       },
     });
     map.add(disProvinceLayer);
@@ -327,10 +185,113 @@ export const useMap = (containerRef) => {
         return;
       }
       const ds = new AMap.DistrictSearch({
-        subdistrict: 0,
+        subdistrict: 1,
         extensions: "all",
       });
+      console.log(adcode, ds);
+
       ds.search(key, (status, result) => {
+        console.log(status, result);
+        //         {
+        //     "info": "OK",
+        //     "districtList": [
+        //         {
+        //             "citycode": "0839",
+        //             "adcode": "510800",
+        //             "name": "广元市",
+        //             "center": [
+        //                 105.844004,
+        //                 32.435774
+        //             ],
+        //             "level": "city",
+        //             "boundaries": [
+        //                 [[
+        //                         105.495099,
+        //                         31.550677
+        //                     ],],[],[]
+        //             ],
+        //             "districtList": [
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510812",
+        //                     "name": "朝天区",
+        //                     "center": [
+        //                         105.882848,
+        //                         32.651352
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 },
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510824",
+        //                     "name": "苍溪县",
+        //                     "center": [
+        //                         105.934756,
+        //                         31.731709
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 },
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510811",
+        //                     "name": "昭化区",
+        //                     "center": [
+        //                         105.957612,
+        //                         32.333173
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 },
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510823",
+        //                     "name": "剑阁县",
+        //                     "center": [
+        //                         105.524699,
+        //                         32.288681
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 },
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510822",
+        //                     "name": "青川县",
+        //                     "center": [
+        //                         105.238498,
+        //                         32.575821
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 },
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510802",
+        //                     "name": "利州区",
+        //                     "center": [
+        //                         105.845307,
+        //                         32.433756
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 },
+        //                 {
+        //                     "citycode": "0839",
+        //                     "adcode": "510821",
+        //                     "name": "旺苍县",
+        //                     "center": [
+        //                         106.290124,
+        //                         32.229074
+        //                     ],
+        //                     "level": "district",
+        //                     "boundaries": []
+        //                 }
+        //             ]
+        //         }
+        //     ]
+        // }
         const bounds =
           status === "complete" && result.districtList?.length
             ? result.districtList[0].boundaries || []
@@ -352,23 +313,34 @@ export const useMap = (containerRef) => {
    * 为可下钻子区域创建透明交互 Polygon（hover 高亮 + 点击下钻），并与标签 hover 联动
    */
   const createInteractivePolygon = (map, sub, textMarker) => {
+    console.log(sub);
+
     if (!sub.boundaries?.length) return;
     const polygon = new AMap.Polygon({
       path: sub.boundaries,
       fillColor: "#4B93E9",
-      fillOpacity: 0.01,
+      fillOpacity: 1,
       strokeColor: "#66CCFF",
       strokeWeight: 2,
-      strokeOpacity: 0.01,
+      // 如果是省级视图，市级描边由 DistrictLayer (city-stroke) 提供，这里的交互多边形描边设为透明，避免重叠发虚
+      strokeOpacity: currentLevelInject?.value === "province" ? 0.01 : 1,
       bubble: true,
       cursor: "pointer",
-      zIndex: 125, // 高于卫星图(115)/行政区划图层(120)，低于主边界线(130)
+      zIndex: 225, // 高于卫星图(115)/行政区划图层(120)，低于主边界线(130)
       map,
     });
     const hoverOn = () =>
-      polygon.setOptions({ fillOpacity: 0.25, strokeOpacity: 1 });
+      polygon.setOptions({
+        fillOpacity: 0.25,
+        strokeOpacity: 1,
+        strokeWeight: 3,
+      });
     const hoverOff = () =>
-      polygon.setOptions({ fillOpacity: 0.01, strokeOpacity: 0.01 });
+      polygon.setOptions({
+        fillOpacity: 0.01,
+        strokeOpacity: currentLevelInject?.value === "province" ? 0.01 : 1,
+        strokeWeight: 2,
+      });
     polygon.on("mouseover", hoverOn);
     polygon.on("mouseout", hoverOff);
     polygon.on("click", () => drillDown(sub));
@@ -404,6 +376,7 @@ export const useMap = (containerRef) => {
         "-1.5px -1.5px 0 #0A2E5F, 1.5px -1.5px 0 #0A2E5F, -1.5px 1.5px 0 #0A2E5F, 1.5px 1.5px 0 #0A2E5F, 0 0 8px rgba(0, 0, 0, 0.9)",
       cursor: canDrill ? "pointer" : "default",
     };
+    console.log(district);
 
     (district.districtList || []).forEach((sub) => {
       if (!sub.center) return;
@@ -424,8 +397,9 @@ export const useMap = (containerRef) => {
       if (canDrill) {
         // 标签点击下钻不依赖边界数据，立即可用
         textMarker.on("click", () => drillDown(sub));
-
+        console.log(sub);
         if (sub.boundaries?.length) {
+          console.log(1);
           createInteractivePolygon(map, sub, textMarker);
         } else {
           // 子级无边界：异步单独查询（串行队列），返回后补建交互区
@@ -435,19 +409,38 @@ export const useMap = (containerRef) => {
             createInteractivePolygon(map, sub, textMarker);
           });
         }
-      } else if (sub.boundaries?.length) {
-        // 县级视图：绘制乡镇边界线（高德不提供乡镇边界，有数据则画，仅展示不可交互）
-        sub.boundaries.forEach((ring) => {
-          interactivePolygons.push(
-            new AMap.Polyline({
-              path: ring,
-              strokeColor: "rgba(255, 255, 255, 0.5)",
-              strokeWeight: 1.5,
-              zIndex: 125,
-              map,
-            }),
-          );
-        });
+      } else {
+        // 县级视图（canDrill 为 false）：绘制乡镇边界线
+        if (sub.boundaries?.length) {
+          sub.boundaries.forEach((ring) => {
+            interactivePolygons.push(
+              new AMap.Polyline({
+                path: ring,
+                strokeColor: "rgba(102, 204, 255, 0.8)", // 亮青色，和上级描边保持一致
+                strokeWeight: 2,
+                zIndex: 125,
+                map,
+              }),
+            );
+          });
+        } else {
+          // 如果乡镇没有边界数据，也去异步请求一下试试（高德有时候能返回某些乡镇的边界）
+          enqueueFetchBoundaries(sub.adcode).then((bounds) => {
+            if (gen !== viewGen || !bounds.length) return;
+            sub.boundaries = bounds;
+            bounds.forEach((ring) => {
+              interactivePolygons.push(
+                new AMap.Polyline({
+                  path: ring,
+                  strokeColor: "rgba(102, 204, 255, 0.8)",
+                  strokeWeight: 2,
+                  zIndex: 125,
+                  map,
+                }),
+              );
+            });
+          });
+        }
       }
     });
   };
@@ -474,7 +467,11 @@ export const useMap = (containerRef) => {
     const map = mapInstance.value;
     if (!map) return;
     viewGen += 1; // 递增视图代数，使旧的异步边界查询结果失效
-    currentLevel.value = district.level || "province";
+    if (currentLevelInject)
+      currentLevelInject.value = district.level || "province";
+    if (currentSelectAreaCode)
+      currentSelectAreaCode.value = String(district.adcode);
+    if (currentSelectPlaceName) currentSelectPlaceName.value = district.name;
 
     const boundaries = district.boundaries || [];
 
@@ -517,6 +514,10 @@ export const useMap = (containerRef) => {
       if (status !== "complete" || !result.districtList?.length) return;
       const district = result.districtList[0];
       if (!district.boundaries?.length) return; // 无边界数据则不下钻
+
+      // 为下一级的子区域（例如：成都市下的武侯区、青羊区等）预获取边界数据
+      // 只有有了 boundaries 才能渲染出轮廓描边
+
       boundaryCache.set(String(sub.adcode), district.boundaries); // 写入缓存，返回此视图时直接复用
       areaStack.push(district);
       renderLevelView(district);
@@ -540,9 +541,9 @@ export const useMap = (containerRef) => {
       // Loca 依赖全局 AMap，需在 JSAPI 加载完成后再加载
       const Loca = await loadLoca(DEFAULT_MAP_KEY);
 
-      // subdistrict: 1 携带下一级行政区列表（含边界），供交互多边形与下钻使用
+      // subdistrict: 2 携带下两级行政区列表（市、区县），供交互多边形边界获取和描边渲染
       const districtSearch = new AMap.DistrictSearch({
-        subdistrict: 3,
+        subdistrict: 2,
         extensions: "all",
         level: "province",
       });
@@ -707,12 +708,12 @@ export const useMap = (containerRef) => {
     if (!mapInstance.value || !satelliteLayer || !disProvinceLayer) return;
 
     const strokes = {
-      "province-stroke": "#ffffff",
-      "city-stroke": "rgba(255, 255, 255, 0.6)",
-      "county-stroke":
-        currentLevel.value === "province"
-          ? "transparent"
-          : "rgba(255, 255, 255, 0.6)",
+      "province-stroke": "transparent",
+      "city-stroke":
+        currentLevelInject?.value === "province"
+          ? "rgba(102, 204, 255, 0.8)"
+          : "transparent",
+      "county-stroke": "transparent",
     };
 
     if (newVal) {
@@ -764,7 +765,7 @@ export const useMap = (containerRef) => {
   return {
     map: mapInstance,
     showHeatmap,
-    currentLevel,
+    currentLevel: currentLevelInject,
     goBack,
   };
 };
